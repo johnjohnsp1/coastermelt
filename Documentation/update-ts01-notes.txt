@@ -1,0 +1,273 @@
+========================================
+MT1939 Firmware Update Protocol Analysis
+========================================
+
+The SE-506CB is a robot with a powerful 405nm laser, a fast ARM processor, high speed USB 2.0, over 4 megabytes of RAM, and an extremely precise positioning system combining a hyrid of high-speed unidirectional spiral groove addressing and an ultra-precise high speed optical tracking system. It is capable of writing 149 nanometer dots onto a metal foil and dye substrate at a rate of over 200 million per second. All precisely positioned in a microscopic spiral, winding with canyons 320 nanometers apart.
+
+It has 2 megabytes of flash memory, programmable over straightforward commands using unencrypted, uncompressed ARM code. The standard firmware implements the USB Mass Storage protocol, and above that a suite of standard and unique SCSI and MMC opcodes. It controls the two motors and voice coil mechanism that make up the mechanical parts of the robot, and the undocumented Mediatek MT1939 System-on-Chip includes both the modern ARM processor and no doubt many obscure and custom components dedicated to the tasks of routing specially formatted data and controlling power-constrained hardware components as efficiently as possible. It is slim, efficient, modern, a best seller in its category. Manufactured by the truckload at Samsung, and available for one click on Amazon for $80 today. And when you plug it into your computer, it will let you store up to 50 gigabytes of data on a 120mm metal and plastic Blu-Ray disc.
+
+It's a truly amazing machine. Optical drive capabilities were steadily growing more nuanced and expansive over the decades since the invention of the CD-ROM, but people hardly noticed. Today's Blu-Ray burner might be the last generation of optical drive that's really marketed widely enough to be this affordable. I want to open it up as a platform for art and research. This is part of an affort to understand the hardware well enough to start crafting completely new open source firnwares from scratch.
+
+
+Detailed Background
+-------------------
+
+This is an analysis of USB traffic observed during a firmware update from version TS01 to version TS01, on the Samsung SE-506CB Blu-Ray drive based on the Mediatek MT1939 System-on-Chip.
+
+The logs here were captured using the debugging features in VMware Fusion while running the Windows version of the official updater tool in a VM. There was also a Mac version, but it did not appear to function on the latest releases of the operating system.
+
+In the shorthand below, packets aren't explicitly labelled but they're presented in a consistent order:
+
+   - First the USB Command Block Wrapper (CBW) packet that contains the SCSI Command Data Block (CDB). This begins with a characteristic "USBC" signature. It contains various fields of interest, like a command tag and the length of the expected response. To paraphrase the protocol spec in pseudocode:
+
+        uint32_t dCBWSignature = 'USBC';
+        uint32_t dCBWTag;
+        uint32_t dCBWDataTransferLength;
+        uint8_t bmCBWFlags;
+        uint8_t bCBWLUN;
+        uint8_t bCBWCBLength;
+        uint8_t CBWCB[16];
+
+    For details on this, consult the USB Mass Storage specification (usbmassbulk_10.pdf)
+
+   - Next, just the SCSI CDB. This is redundant (it's part of the USB packet) but having it here makes the trace easier to read, since it can be displayed with the correct length and in a visually distinct place. This packet always begins with a 1-byte opcode that identifies the command. The format of the rest depends on this byte. The various SCSI specifications use a handful of formats that share some common parts but which aren't totally consistent.
+
+   - Now the data for the transfer. Simple commands like INQUIRY for example will have just one response packet here. If the situation gets more complicated, I'll label the packets.
+
+   - Finally the "USBS" signature on the USB Command Status Wrapper (CSW) packet:
+
+        uint32_t dCSWSignature = 'USBS';
+        uint32_t dCSWTag;
+        uint32_t dCSWDataResidue;
+        uint8_t dCSWStatus;
+
+    And that all-important Status byte at the end will be 0 for success and 1 for failure. There's also a response '2' which shouldn't happen unless the USB layer of the protocol gets confused. Other status codes are supposed to be reserved according to the official spec.
+
+Enough introduction, on to the...
+
+
+Analysis
+--------
+
+1. First thing after the app starts, windows ceases its usual MMC device polling cycle. The updater has taken exclusive control of the SCSI device from Windows.
+
+2. Gathering detailed version information from the firmware, using a mix of standard and vendor-specific commands.
+
+- INQUIRY command
+
+USBC INQUIRY datalen 36
+ 000: 55 53 42 43 00 b8 5c 06 24 00 00 00 80 00 0c 12 USBC..\.$.......
+ 010: 00 00 00 24 00 00 00 00 00 00 00 00 00 00 00    ...$........... 
+
+ 000: 12 00 00 00 24 00 00 00 00 00 00 00             ....$.......    
+
+ 000: 05 80 00 32 1f 00 00 00 54 53 53 54 63 6f 72 70 ...2....TSSTcorp
+ 010: 42 44 44 56 44 57 20 53 45 2d 35 30 36 43 42 20 BDDVDW SE-506CB 
+ 020: 54 53 30 31                                     TS01            
+
+ 000: 55 53 42 53 00 b8 5c 06 00 00 00 00 00          USBS..\......   
+
+- Undocumented (FF 00 FF) Read firmware version info
+
+USBC UNKNOWN datalen 8
+ 000: 55 53 42 43 10 f0 18 06 08 00 00 00 80 00 0c ff USBC............
+ 010: 00 ff 00 00 00 00 00 00 00 00 aa 00 00 00 00    ............... 
+
+ 000: ff 00 ff 00 00 00 00 00 00 00 00 aa             ............    
+
+ 000: 00 06 01 01 54 53 20 00                         ....TS .        
+
+ 000: 55 53 42 53 10 f0 18 06 00 00 00 00 00          USBS.........   
+
+- Repeated INQUIRY, longer buffer length
+
+USBC INQUIRY datalen 96
+ 000: 55 53 42 43 00 b8 5c 06 60 00 00 00 80 00 0c 12 USBC..\.`.......
+ 010: 00 00 00 60 00 00 00 00 00 00 00 00 00 00 00    ...`........... 
+
+ 000: 12 00 00 00 60 00 00 00 00 00 00 00             ....`.......    
+
+ 000: 05 80 00 32 1f 00 00 00 54 53 53 54 63 6f 72 70 ...2....TSSTcorp
+ 010: 42 44 44 56 44 57 20 53 45 2d 35 30 36 43 42 20 BDDVDW SE-506CB 
+ 020: 54 53 30 31 20 20 30 35 32 38 20 20 20 20 20 20 TS01  0528      
+ 030: 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ...............
+ 040: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+ 050: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+
+ 000: 55 53 42 53 00 b8 5c 06 00 00 00 00 00          USBS..\......   
+
+3. At this point, the firmware updater app has everything it needs to display its dialog box with drive and firmware info. Now it's waiting for the user to pick a file and initiate the "Download" operation.
+
+    It's also worth noting the warning labels on the updater app. There's the typical one where you shouldn't remove power during the update. That's pretty normal for any kind of reflasher tool. But then, below that, there's another warning. Quoted, underlined, all caps, and even blinking, warning me to run the firmware updater again if the drive stops working.
+
+    Reading between the lines, this hints a few things to me:
+
+        - This is corroborated by the delays we see below, but it seems like the drive is reflashing the firmware as the image is being received, rather than buffering the image then reflashing all at once. This means that the drive is probably (hopefully?) in no state to work properly if it's interrupted. It will probably crash, but maybe it glitches first. Hard to say until I understand the boot process and how much verification happens, if any.
+
+        - For this promised recovery procedure to have any chance of recovering from a power fail during flash, there needs to be a bootloader capable of catching this fault somehow, then choosing to run a tiny stub firmware instead of the regular firmware. The stub firmware may use a different firmware update mechanism or it may be a subset of the usual firmware.
+
+        - The way it catches this fault will be important to our reversing efforts. If it's checking a hash or a signature at boot, then we'll need to figure out how to update the hash or forge the signature when we create our own firmware images. If it's catching a runtime error, that's easy then. We just try not to trip over that handler, but if we do we have a built-in safety net. This is the most developer-friendly thing we could hope to find, so I'm skeptical. Worst case, it has no way of catching the fault, this warning message is actually a lie, and I'll brick my drive the moment I create a buggy firmware. If that happens, plan B is to open up the device and look for a JTAG port. It would be a good chance to try the JTAGulator. And plan C, if that fails, this unit will be sacrificed for PCB scans ^_^
+
+4. When "Download" starts, a rapid sequence of status polls occur. It happens five times in this case. Doesn't look important. It seems more like a side-effect of some API they're using to open the SCSI device.
+
+USBC TEST UNIT READY datalen 0
+ 000: 55 53 42 43 30 b5 06 06 00 00 00 00 00 00 0c 00 USBC0...........
+ 010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    ............... 
+
+ 000: 00 00 00 00 00 00 00 00 00 00 00 00             ............    
+
+ 000: 55 53 42 53 30 b5 06 06 00 00 00 00 01          USBS0........   
+
+USBC REQUEST SENSE datalen 24
+ 000: 55 53 42 43 30 b5 06 06 18 00 00 00 80 00 0c 03 USBC0...........
+ 010: 00 00 00 18 00 00 00 00 00 00 00 00 00 00 00    ............... 
+
+ 000: 03 00 00 00 18 00 00 00 00 00 00 00             ............    
+
+ 000: 70 00 02 00 00 00 00 0a 00 00 00 00 3a 02 00 00 p...........:...
+ 010: 00 00 00 00 00 00 00 00                         ........        
+
+ 000: 55 53 42 53 30 b5 06 06 00 00 00 00 00          USBS0........   
+
+5. Step (2) repeats. App is checking the status of the existing firmware again before beginning the "Download".
+
+6. Undocumented (FF 00 01) Begin writing firmware image
+
+USBC UNKNOWN datalen 63488
+ 000: 55 53 42 43 b0 b4 93 05 00 f8 00 00 00 00 0c ff USBC............
+ 010: 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00    ............... 
+
+ 000: ff 00 01 00 00 00 00 00 00 00 00 00             ............    
+
+ Firmware data: 0xf800 (63488) bytes from address 0
+
+    This is sent as four USB 2.0 packets, with lengths 0x4A00, 0x4000, 0x4000, and 0x2E00. This seems quite odd, but it likely reveals more about the structure of the memory buffers in the firmware updater app than it does about the device itself, since this pattern repeats identically for each of the many SCSI transfers that make up the firmware image.
+
+    Why this weird size, 0xf800 bytes? It's the number you'd pick if your constraints were:
+
+        - Less than 64 kiB
+        - Multiple of 2 kiB (0x800)
+
+        (Pure speculation, but these are exactly the constraints you'd have if you believed that 2 kiB was a good buffer size, and wanted your driver to work on Windows. I seem to remember some odd 64 kiB limits from a past life of debugging USB drivers on Windows systems.)
+
+    An alternate theory: This could be related to a flash error-correction structure implemented by the device. It could be that the physical flash device has an erase block size of exactly 64 kiB, but each of these blocks needs 2 kiB of reserved space for the ECC something something :) The total size of the image still adds up to exactly 2 MiB, but this means that the physical flash blocks are mapped a little bit askew from the blocks as seen by the ARM CPU core. Just a theory for now, we might be able to prove this later if we can figure out what the flash brand is and how it's attached.
+
+    From looking at aligntments elsewhere in the firmware, it seems like usual binary multiples (0x10000 and such) are used and I don't see any evidence of the 0xf800 block size elsewhere. This is good news!
+
+ 000: 55 53 42 53 b0 b4 93 05 00 00 00 00 00          USBS.........   
+
+7. Undocumented (FF 00 01) Continue writing firmware image
+
+This includes a flag 0xFF in the CDB, indicating that this is a continuation rather than the first block of the image.
+
+After 16 continuations (17 total writes), totalling 1054 kiB and requiring about 0.5 second of transmission time, the device stalls for about 10 seconds before it will return a successful status code. It appears that the device buffers about 1 megabyte (half the total) at a time before committing the write.
+
+After that pause, another 16 continuations of the same type for 32 total.
+
+USBC UNKNOWN datalen 63488
+ 000: 55 53 42 43 b0 b4 93 05 00 f8 00 00 00 00 0c ff USBC............
+ 010: 00 01 00 00 ff 00 00 00 00 00 00 00 00 00 00    ............... 
+
+ 000: ff 00 01 00 00 ff 00 00 00 00 00 00             ............   
+                     ^ New
+
+ Firmware data: 0xf800-byte block. Repeated for firmware blocks 1 through 32 as described above.
+
+ 000: 55 53 42 53 b0 b4 93 05 00 00 00 00 00          USBS.........   
+
+8. Undocumented (FF 00 01) Finish writing firmware image
+
+The final block is smaller, only 2048 bytes. The total of (1 + 32) * 0xf800 + 2048 is exactly 2 MiB: 0x200000. The parameters for this final block are different yet again.
+
+USBC UNKNOWN datalen 2048
+ 000: 55 53 42 43 10 44 29 05 00 08 00 00 00 00 0c ff USBC.D).........
+ 010: 00 01 00 00 02 00 00 00 00 00 00 00 00 00 00    ............... 
+
+ 000: ff 00 01 00 00 02 00 00 00 00 00 00             ............    
+                      ^ Again this byte changed
+
+                        What does the value mean? Most logical would be this is simply a state indicator and these were hardcoded constants [0, -1, 2] for some reason. Maybe we'll find out what 1 means later. Maybe it means "Error, try to abort!" whereas 2 means "go ahead and reboot into the new firmware image!"
+
+    It occurs to me here that the footer data in the last 48 bytes of the firmware image probably includes some kind of entry point or checksum information in addition to the plaintext version string. That would make this otherwise seemingly haphasard firmware updater procedure make a bit more sense. This trailer would be the integrity check used by the bootloader. The idea would be that the bootloader is likely to stay intact, and if it notices the rest of the firmware has been damaged it will quarantine us into a tiny tiny firmware that just knows how to reflash again.
+
+     Excerpt showing the very end of the last packet of the firmware image, for reference:
+
+     790: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ................
+     7a0: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ................
+     7b0: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ................
+     7c0: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ................
+     7d0: 54 53 53 54 63 6f 72 70 42 44 44 56 44 57 20 53 TSSTcorpBDDVDW S
+     7e0: 45 2d 35 30 36 43 42 20 54 53 30 31 3e 22 04 00 E-506CB TS01>"..
+     7f0: 54 53 20 ff ff ff ff ff aa aa ff ff ff ff 59 18 TS ...........Y.
+
+     And as another aside, the full INQUIRY response for reference:
+
+     000: 05 80 00 32 1f 00 00 00 54 53 53 54 63 6f 72 70 ...2....TSSTcorp
+     010: 42 44 44 56 44 57 20 53 45 2d 35 30 36 43 42 20 BDDVDW SE-506CB 
+     020: 54 53 30 31 20 20 30 35 32 38 20 20 20 20 20 20 TS01  0528      
+     030: 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ...............
+     040: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+     050: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+
+     A boring computer sciency type would probably call this 48-byte blob at address 0x1fffd0 something like a "Firmware Trailer", since it lives at the very end. But let's call it the "infonub", since it's a little but quite important thingie that indentifies a firmware image in some important and still somewhat mysterious ways. First we have a section of th INQUIRY response, the first 28 bytes. it's a little response, just barely enough to capture the firmware version. Reading between the lines again and looking at the fields in common between these two packet formats, it seems to me that the firmware has something like this as a data type:
+
+         struct FirmwareVersionStrings {
+            char vendor[8]      = "TSSTcorp";
+            char product[16]    = "BDDVDW SE-506CB ";
+            char version[4]     = "TS01";
+         };
+
+     The version code "TS01" is consistent with the format used in the filenames of firmware images included with the official updater tool.
+
+     The remainder of the infonub after the string structure looks like this:
+
+     1fffe0:                                     3e 22 04 00             >"..
+     1ffff0: 54 53 20 ff ff ff ff ff aa aa ff ff ff ff 59 18 TS ...........Y.
+
+     Or listed as 32-bit words:     0004223e    Really hoping for an entry point, but this doesn't make sense.
+          (you know, for            ff205354    Maybe a collection of feature bits or some kind of loader information? Looks orderly!
+             some inspiration)      ffffffff    -1, or anything really.
+                                    ffffaaaa    Two small bit-fiddly things?
+                                    1859ffff    An important maybe-BCD-formatted number and a 16-bit placeholder thing?
+
+    Wowsers, when thes comes back note the nonzero residual code reported via SCSI! In this case it's 0x800. But we're supposed to be done! I wonder why? This happens to match the length of our non-maximum-length write payload. It's also worth noting that there's antother 10 second pause in delivering the USBS packet for this final write. This would be consistent with a hypothesis that the firmware writes 1 MiB at a time, and these writes are big chunky 10 second long operations that block everything.
+
+     000: 55 53 42 53 10 44 29 05 00 08 00 00 00          USBS.D)......   
+                                 ^-----------^
+                                       This is 2 kiB in the "residual" field. Huh!
+
+8. To review the timeline so far, we had a bunch of rapid-fire things, then:
+
+    - We write 1 MiB of firmware image, and suddenly the USB interface stalls for 10 seconds until a successful CSW packet comes back.
+    - Then we write another 1 MiB of firmware (each write took only a half second even in a VM with lots of debug). Just prior to the CSW in the final packet, there's another similar 10 second stall. The CSW completes successfully.
+
+    So! Now we've actually finished sending the firmware and the drive has told us everything's good. I see another 10 second pause in the USB logs here. I don't know if that's necessary (giving the drive time to finish doing something else) or whether it's because Windows takes some time to reload its usual MMC drivers. For whatever reason, Windows only resumes MMC polling about 10 seconds after the final firmware download CSW completes successfully.
+
+    We won't know whether this additional 10 second delay is necessary until we try omitting it ^_^
+
+9. And that's it! The drive starts running the new firmware automatically at some point. In the normal operation of the Windows firmware updater in this VM, the subsequent polling commands sent to the drive begin working immediately, even though the software forces you to abruptly reboot windows. I can see why; the state of the firmware could be out of sync with what the Windows driver thinks, since the firmware has just been abruptly changed while the driver's running. Of course, if we're hackers, it means we can probably get a tolerably rapid development cycle. Just about 22 seconds to fully reflash the chip.
+
+
+Entry Point
+-----------
+
+Working forward from the infonub, it's got me curious about the firmware image entry-point. It's 2 MiB total, but even a very rough analysis shows that it seems to be made of several different kinds of binaries, glued together. There's what appears to be a large application image, compiled C or C++ code, with mostly thumb opcodes and some ARM mixed in. There's a data segment after that, and some other smaller segments scattered about.
+
+Here's what I gather of the memory map so far:
+
+  00000000 - 0000ffff      64 KiB      First 64k is a protected bootloader area most likely. 
+                                       I suspect (hope?) that this can't be overwritten by the loader commands above.
+
+    00000000 - 00000fff     4 KiB      Unknown! Fairly dense bytes, could be encrypted or obfuscated.
+    00001000 - 0000dfff    52 KiB      Plaintext ARM code and data area for the bootloader.
+    0000e000 - 0000ffff     8 KiB      More mystery data.
+                                            My best guess: Some kind of volume info or signature for the bootloader.
+                                            Includes signature string at e060: "MoaiEasterIslandThomasYoyo(^o^)/",
+                                            which we see repeated at 17f860.
+
+    0017f800 - 00182000?               Similar mystery data; possibly pertaining to the application image rather than bootloader here.
+
+  000010000                            Plausible entry vector table for application image. (Interface from bootloader to main program)
+  
+
+~MeS`14

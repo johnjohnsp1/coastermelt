@@ -1,0 +1,80 @@
+High Speed device @ 1 (0x14100000): .............................................   Composite device: "MT1956 "
+    Port Information:   0x101a
+           Not Captive
+           Attached to Root Hub
+           External Device
+           Connected
+           Enabled
+           Connected to External Port
+    Number Of Endpoints (includes EP0):   
+        Total Endpoints for Configuration 1 (current):   3
+    Device Descriptor   
+        Descriptor Version Number:   0x0200
+        Device Class:   0   (Composite)
+        Device Subclass:   0
+        Device Protocol:   0
+        Device MaxPacketSize:   64
+        Device VendorID/ProductID:   0x0E8D/0x1956   (MediaTek Inc.)
+        Device Version Number:   0x0000
+        Number of Configurations:   1
+        Manufacturer String:   1 "MediaTek Inc"
+        Product String:   2 "MT1956 "
+        Serial Number String:   3 "\u3153\u4535\u5936\u464d\u3032\u4730\u5352\u2020\u0901\000\u0a01\u0c00\u4446C\u4453"
+    Configuration Descriptor (current config): ......................   "Default"
+        Length (and contents):   32
+            Raw Descriptor (hex)    0000: 09 02 20 00 01 01 04 A0  FA 09 04 00 00 02 08 02  
+            Raw Descriptor (hex)    0010: 50 05 07 05 81 02 00 02  00 07 05 02 02 00 02 00  
+            Unknown Descriptor   0020: 
+        Number of Interfaces:   1
+        Configuration Value:   1
+        Attributes:   0xA0 (bus-powered, remote wakeup)
+        MaxPower:   500 mA
+        Interface #0 - Mass Storage/ATAPI ..............................................   "6238--Storage"
+            Alternate Setting   0
+            Number of Endpoints   2
+            Interface Class:   8   (Mass Storage)
+            Interface Subclass;   2   (ATAPI)
+            Interface Protocol:   80   (Bulk Only)
+            Endpoint 0x81 - Bulk Input   
+                Address:   0x81  (IN)
+                Attributes:   0x02  (Bulk)
+                Max Packet Size:   512
+                Polling Interval:   0 ( Endpoint never NAKs)
+            Endpoint 0x02 - Bulk Output   
+                Address:   0x02  (OUT)
+                Attributes:   0x02  (Bulk)
+                Max Packet Size:   512
+                Polling Interval:   0 ( Endpoint never NAKs)
+    Device Qualifier Descriptor   
+        Descriptor Version Number:   0x0200
+        Device Class   0   (Composite)
+        Device Subclass   0
+        Device Protocol   0
+        Device MaxPacketSize:   64
+        Number of Configurations:   1
+        bReserved:   0
+    Other Speed Configuration Descriptor: .......................................   "Default"
+        Length (and contents):   32
+            Raw Descriptor (hex)    0000: 09 07 20 00 01 01 04 A0  FA 09 04 00 00 02 08 02  
+            Raw Descriptor (hex)    0010: 50 05 07 05 81 02 40 00  00 07 05 02 02 40 00 00  
+            Unknown Descriptor   0020: 
+        Number of Interfaces:   1
+        Configuration Value:   1
+        Attributes:   0xA0 (bus-powered, remote wakeup)
+        MaxPower:   500 mA
+        Interface #0 - Mass Storage/ATAPI ..............................................   "6238--Storage"
+            Alternate Setting   0
+            Number of Endpoints   2
+            Interface Class:   8   (Mass Storage)
+            Interface Subclass;   2   (ATAPI)
+            Interface Protocol:   80   (Bulk Only)
+            Endpoint 0x81 - Bulk Input   
+                Address:   0x81  (IN)
+                Attributes:   0x02  (Bulk)
+                Max Packet Size:   64
+                Polling Interval:   0 ms
+            Endpoint 0x02 - Bulk Output   
+                Address:   0x02  (OUT)
+                Attributes:   0x02  (Bulk)
+                Max Packet Size:   64
+                Polling Interval:   0 ms
