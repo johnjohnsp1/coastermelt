@@ -2,6 +2,7 @@
 Hardware reverse engineering notes
 ==================================
 
+
 Identifying data
 ================
 
@@ -20,6 +21,7 @@ Samsung SE-506CB
     Factory ID : T
     MADE IN PHILIPPINES
     BG68-02024A  Rev.00
+
 
 Components
 ==========
@@ -72,3 +74,23 @@ Components
     2CAJELTG4
     TPIC1356
 
+
+Test Points
+===========
+
+- Top side has only fiducial markers and two very small test points at the
+  bottom-right corner of the SoC. These are probably spare pins for rework,
+  the spacing looks too crowded for this to be useful in production.
+
+Bottom side:
+
+- Two normal test-points near the motor controllers.
+- Five vias that have been enlarged into test points. Could be motor control
+  or power related.
+- Test points near PCB trace inductors under the power supply. These are
+- probably different grounds (analog, digital, shield).
+- Threee normal test-points near the SoC
+- Two via test points near the SoC
+- Three via test points are especially elongated and form a row adjacent to
+  the SoC thermal pad. These seem most likely to be a factory programming
+  interface.
