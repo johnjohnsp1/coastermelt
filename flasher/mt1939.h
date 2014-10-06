@@ -66,6 +66,7 @@ public:
     // Higher level operations
     static bool deviceInfo(TinySCSI &scsi, DeviceInfo* data);
     static bool writeFirmware(TinySCSI &scsi, FirmwareImage* data);
+    static bool reset(TinySCSI &scsi);
 };
 
 
@@ -102,10 +103,9 @@ inline bool MT1939::writeFirmware(TinySCSI &scsi, FirmwareWriteState state, uint
 
 inline bool MT1939::writeFirmware(TinySCSI &scsi, FirmwareImage* data)
 {
-    // First block of 0xF800 bytes
-
     fprintf(stderr, "[MT1939] Beginning firmware install\n");
 
+    // First block of 0xF800 bytes
     if (!writeFirmware(scsi, kFirmwareBegin, &data->bytes[0], 0xF800)) {
         return false;
     }
@@ -121,25 +121,43 @@ inline bool MT1939::writeFirmware(TinySCSI &scsi, FirmwareImage* data)
     }
 
     // Final block of 2048 bytes. This will also cause a 10 second pause, and the device
-    // will subsequently reboot into the new firmware.
+    // will subsequently reboot into the new firmware. When the firmware is writing, the drive's
+    // activity LED will blink with a particular cadence.
 
     fprintf(stderr, "[MT1939] Finishing firmware install\n");
     writeFirmware(scsi, kFirmwareComplete, &data->bytes[0xF800 * 32], 2048);
 
-    fprintf(stderr, "[MT1939] Firmware install complete, device rebooting\n");
+    fprintf(stderr, "[MT1939] Firmware install complete, delay before USB reset\n");
+    sleep(10);
 
-    fprintf(stderr, "[MT1939] Polling for new device info...\n");
-    for (unsigned attempt = 0; attempt < 1000; attempt++) {
-        DeviceInfo info;
+    return reset(scsi);
+}
 
-        if (deviceInfo(scsi, &info)) {
+inline bool MT1939::reset(TinySCSI &scsi)
+{
+    fprintf(stderr, "[MT1939] USB reset and re-enumerate\n");
+    scsi.reEnumerate();
+
+    for (unsigned attempt = 0; attempt < 100; attempt++) {
+
+        sleep(1);
+
+        if (open(scsi)) {
+            fprintf(stderr, "[MT1939] Device is back\n");
+
+            DeviceInfo info;
+            if (!deviceInfo(scsi, &info)) {
+                fprintf(stderr, "[MT1939] Device info fail after reset\n");
+                return false;
+            }
+
             // Device is alive. Yay.
             info.print();
             return true;
         }
     }
 
-    fprintf(stderr, "[MT1939] Timed out waiting for device to come back :(\n");
+    fprintf(stderr, "[MT1939] Couldn't reopen after USB reset :(\n");
     return false;
 }
 

@@ -25,7 +25,7 @@
 #pragma once
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
-#include <IOKit/usb/USBSpec.h>
+#include <IOKit/usb/IOUSBLib.h>
 #include <IOKit/scsi/SCSITaskLib.h>
 #include <IOKit/scsi/SCSITask.h>
 #include <stdio.h>
@@ -46,6 +46,7 @@ public:
 
     bool open(uint16_t idVendor, uint16_t idProduct);
     bool command(uint8_t* cdb, unsigned cdbLen, DataDirection dir = NONE, uint8_t* data = 0, unsigned dataLen = 0);
+    bool reEnumerate();
 
     bool in(uint8_t* cdb, unsigned cdbLen, uint8_t* data, unsigned dataLen) {
         return command(cdb, cdbLen, IN, data, dataLen);
@@ -64,6 +65,7 @@ public:
 private:
     SCSITaskDeviceInterface** mInterface;
     SCSITaskInterface** mTask;
+    IOUSBDeviceInterface187** mUSB;
 };
 
 
@@ -111,6 +113,7 @@ inline bool TinySCSI::open(uint16_t idVendor, uint16_t idProduct)
     MMCDeviceInterface** mmc = 0;
     SInt32 score = 0;
 
+    // Attach an MMC user client right here
     if (kIOReturnSuccess != IOCreatePlugInInterfaceForService(
             service, kIOMMCDeviceUserClientTypeID, kIOCFPlugInInterfaceID, &plugin, &score) ||
         S_OK != (*plugin)->QueryInterface(
@@ -119,6 +122,28 @@ inline bool TinySCSI::open(uint16_t idVendor, uint16_t idProduct)
         return false;
     }
 
+    // Look for a parent where we can attach a USB user client
+    io_registry_entry_t parent = 0;
+    mUSB = 0;
+    while (kIOReturnSuccess == IORegistryEntryGetParentEntry(service, kIOServicePlane, &parent)) {
+        service = parent;
+
+        if (kIOReturnSuccess != IOCreatePlugInInterfaceForService(
+                service, kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID, &plugin, &score) ||
+            S_OK != (*plugin)->QueryInterface(
+                plugin, CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID187), (LPVOID*) &mUSB) ) {
+            mUSB = 0;
+            continue;
+        }
+
+        break;
+    }
+    if (!mUSB) {
+        fprintf(stderr, "[SCSI] Failed to create USB user client plugin for device\n");
+        return false;
+    }
+
+    // Now yank the device away from the operating system
     mInterface = (*mmc)->GetSCSITaskDeviceInterface(mmc);
     if (!mInterface || kIOReturnSuccess != (*mInterface)->ObtainExclusiveAccess(mInterface)) {
         fprintf(stderr, "[SCSI] Can't get exclusive access to the device\n");
@@ -130,6 +155,30 @@ inline bool TinySCSI::open(uint16_t idVendor, uint16_t idProduct)
     return true;
 }
 
+inline bool TinySCSI::reEnumerate()
+{
+    OSStatus kr;
+
+    kr = (*mUSB)->USBDeviceOpen(mUSB);
+    if (kr) {
+        fprintf(stderr, "[SCSI] Failed to open USB device (%08x)\n", kr);
+        return false;
+    }
+
+    kr = (*mUSB)->ResetDevice(mUSB);
+    if (kr) {
+        fprintf(stderr, "[SCSI] Failed to reset USB device (%08x)\n", kr);
+        return false;
+    }
+
+    kr = (*mUSB)->USBDeviceReEnumerate(mUSB, 0);
+    if (kr) {
+        fprintf(stderr, "[SCSI] Failed to re-enumerate USB device (%08x)\n", kr);
+        return false;
+    }
+
+    return true;
+}
 
 inline bool TinySCSI::command(uint8_t* cdb, unsigned cdbLen, DataDirection dir, uint8_t* data, unsigned dataLen)
 {
