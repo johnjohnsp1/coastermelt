@@ -34,7 +34,22 @@ int main(int argc, char** argv)
     if (!MT1939::deviceInfo(scsi, &info)) {
         return 1;
     }
-
     info.print();
+
+    if (argc != 2) {
+        fprintf(stderr, "usage: %s firmware.bin\n", argv[0]);
+        return 1;
+    }
+
+    MT1939::FirmwareImage fw;
+    if (!fw.open(argv[1])) {
+        return 1;
+    }
+    fw.print();
+
+    if (!MT1939::writeFirmware(scsi, &fw)) {
+        return 1;
+    }
+
     return 0;
 }
