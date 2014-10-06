@@ -125,10 +125,7 @@ inline bool MT1939::writeFirmware(TinySCSI &scsi, FirmwareImage* data)
     // activity LED will blink with a particular cadence.
 
     fprintf(stderr, "[MT1939] Finishing firmware install\n");
-    writeFirmware(scsi, kFirmwareComplete, &data->bytes[0xF800 * 32], 2048);
-
-    fprintf(stderr, "[MT1939] Firmware install complete, delay before USB reset\n");
-    sleep(10);
+    writeFirmware(scsi, kFirmwareComplete, &data->bytes[0xF800 * 33], 2048);
 
     return reset(scsi);
 }
@@ -155,6 +152,8 @@ inline bool MT1939::reset(TinySCSI &scsi)
             info.print();
             return true;
         }
+
+        fprintf(stderr, "[MT1939] trying again...\n");
     }
 
     fprintf(stderr, "[MT1939] Couldn't reopen after USB reset :(\n");
