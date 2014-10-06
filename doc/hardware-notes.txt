@@ -44,6 +44,8 @@ Components
     - Encode/decode hardware
     - "RF"
     - "MICOM"
+    - Runs quite hot! Not yet sure which ARM core this uses, but
+      it supports the full 32-bit instruction set.
 
     MEDIATEK
     MT1956UWDN
@@ -94,3 +96,69 @@ Bottom side:
 - Three via test points are especially elongated and form a row adjacent to
   the SoC thermal pad. These seem most likely to be a factory programming
   interface.
+
+
+Wiring Harness
+==============
+
+- Main PCB
+    - SoC
+    - USB Mini-B connector soldered on
+    - Tray closed switch soldered on
+    - 56 pin flex cable leading to tray PCB
+
+- Tray PCB
+    - Some passive components. Capacitors, at least one resistor.
+    - Mostly just a breakout for the 56 pin cable (soldered to the back)
+    - 8 pin flex cable
+        - 4 pins to sled stepper motor
+        - 1 pin common for eject solenoid, eject button, LED
+        - 1 pin to eject solenoid coil
+        - 2 pins to front bezel PCB
+    - 5 pin flex cable to spindle motor
+    - 45 pin flex cable to optical module
+
+- Front bezel PCB
+    - 3 pin flex cable (soldered)
+    - Common, LED, Button
+    - Very bright blue LED!
+
+- Optical module
+    - Very thin and delicate 45-pin flex cable, usually hidden under
+      a metal shield. Probably no PCB involved, just flex cable origami.
+    - Because the copper is so thin, the traces vary greatly in width
+      according to the current capacity. So we have some clues about
+      how the components might be connected. Starting from the labeled
+      pin 1 arrow on the tray PCB:
+
+    1 - 4    HS DATA      These look like high speed serial data pairs.
+                          Pins 1/2 and 3/4 seem to be arranged as matched pairs in
+                          the cable's routing.
+    
+    5        GND?         Probably ground? This seems to be routing as a pour.
+    
+    6        POWER?       A power rail? This is a little thicker than average.
+    7        POWER?       A power rail? This is a little thicker than average.
+    8        DATA         Regular thickness.
+    9        POWER?       A power rail? This is a little thicker than average.
+    10 - 13  DATA         Group of four data lines routed as normal traces
+    14       POWER?       A power rail? This is a little thicker than average.
+    15       SHIELD?      Looks a little thin, and there's a large gap after this.
+    16 - 17  COIL?        Heavy traces close together with gaps on both sides
+    18 - 25  DATA x8      Might be voice coils, more likely an 8-lane data bus maybe
+    26       BIG POWER    Thicker power trace than above. Probably a +V rail?
+    27       N/C          No connect to this pin. No trace on the FPC.
+    28 - 29  GND          Two pins ganged together, connected to a ground pour.
+                          This pour becomes the thickest trace on the whole cable.
+                          This likely becomes a ground plane somewhere inside the
+                          module where there would need to be an amplifier/driver
+                          chip for the laser and photodiode modules.
+    30 - 32  DATA         3 normal thickness traces
+    33       GND?         As thick as earlier power traces. Could be common for
+                          30-32, headed directly to some piece of hardware on the sled.
+    34       GND?         Seems to be just like 33, but not related to 33 so much
+                          as to the next few traces below.
+    35 - 39  DATA         Another 5 normal traces.
+    40 - 45  HUGE         Some absolutely enormous traces. Probably laser diode power,
+                          but maybe voice coil power.
+
