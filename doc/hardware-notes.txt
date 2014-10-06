@@ -126,6 +126,12 @@ Wiring Harness
 - Optical module
     - Very thin and delicate 45-pin flex cable, usually hidden under
       a metal shield. Probably no PCB involved, just flex cable origami.
+
+    - Components inside are obscured, haven't tried disassembling yet.
+      Only internal connections visible are on one of the optical modules.
+      One large ground or mounting pin, four small electrical pins. Soldered
+      to part of the large folded FPC.
+
     - Because the copper is so thin, the traces vary greatly in width
       according to the current capacity. So we have some clues about
       how the components might be connected. Starting from the labeled
@@ -144,6 +150,7 @@ Wiring Harness
     10 - 13  DATA         Group of four data lines routed as normal traces
     14       POWER?       A power rail? This is a little thicker than average.
     15       SHIELD?      Looks a little thin, and there's a large gap after this.
+
     16 - 17  COIL?        Heavy traces close together with gaps on both sides
     18 - 25  DATA x8      Might be voice coils, more likely an 8-lane data bus maybe
     26       BIG POWER    Thicker power trace than above. Probably a +V rail?
@@ -159,6 +166,7 @@ Wiring Harness
     34       GND?         Seems to be just like 33, but not related to 33 so much
                           as to the next few traces below.
     35 - 39  DATA         Another 5 normal traces.
-    40 - 45  HUGE         Some absolutely enormous traces. Probably laser diode power,
-                          but maybe voice coil power.
+
+    40 - 45  VCM          A set of six enormous traces. Verified that these connect
+                          directly to the voice coil motor on the lens assembly.
 
