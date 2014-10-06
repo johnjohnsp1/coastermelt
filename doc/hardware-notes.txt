@@ -1,0 +1,74 @@
+==================================
+Hardware reverse engineering notes
+==================================
+
+Identifying data
+================
+
+Samsung SE-506CB
+
+    S-506CB/RSBD       F/W=TS00
+    S15E6YMF200GRS     FEBRUARY 2014
+    H/W:A              Ver.CB
+    Portable BD Writer Model SE-506
+
+    Designed by Toshiba Samsung Storage Technology
+
+    5V 1.3A
+    Class 1 laser product
+
+    Factory ID : T
+    MADE IN PHILIPPINES
+    BG68-02024A  Rev.00
+
+Components
+==========
+
+- USB Mini-B Connector
+- 25 MHz main XTAL
+- (2x) Sled closed switch
+- Eject button
+- Sled stepper motor
+- Front panel LED (blue)
+- Eject latch solenoid
+- Sled homing sensor
+- Lens focus/tracking voice coils
+- Spindle brushless motor
+
+- System on a Chip
+    - Direct connection to USB port)
+    - Includes 4MB+ DRAM, 2MB Flash
+    - Includes "DSP" and servo control
+    - Encode/decode hardware
+    - "RF"
+    - "MICOM"
+
+    MEDIATEK
+    MT1956UWDN
+    1352-BCSL
+    DKWP2N
+    01XAP34HJ
+    03XB3N87630001
+    D7FY1
+
+- Switching power supply controller
+
+    ST Microelectronics logo
+
+    ST e3
+    ODD03
+    MYS403
+
+- Motor control chipset
+
+    Texas Instruments logo
+
+    - "CL" motor driver IC
+    TPIC1391
+    3CTG4
+    ADPR
+
+    - Spindle, actuator, and sled motor driver IC
+    2CAJELTG4
+    TPIC1356
+

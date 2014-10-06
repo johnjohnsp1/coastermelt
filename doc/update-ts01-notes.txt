@@ -488,5 +488,6 @@ Very rough work in progress...
 
   000010000                            Plausible entry vector table for application image. (Interface from bootloader to main program)
   
+  001fffd0 - 001fffff      48 bytes    Firmware infonub
 
 ~MeS`14
