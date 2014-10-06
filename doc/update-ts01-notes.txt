@@ -203,6 +203,14 @@ pick a file and initiate the "Download" operation.
           the JTAGulator. And plan C, if that fails, this unit will be
           sacrificed for PCB scans ^_^
 
+        - Further experimentation reveals that there's a small "infonub"
+          structure at the end of flash. The bootloader checks this before
+          invoking the application image. It probably includes a simple
+          checksum or CRC. If this CRC passes, it's unclear how one would
+          intentionally enter the bootloader to replace a malfunctioning
+          firmware image. This will require some care until we have a way of
+          recovering.
+
 4. When "Download" starts, a rapid sequence of status polls occur. It happens
 five times in this case. Doesn't look important. It seems more like a side-
 effect of some API they're using to open the SCSI device.
@@ -424,30 +432,59 @@ get a tolerably rapid development cycle. Just about 22 seconds to fully
 reflash the chip.
 
 
-Entry Point
------------
+Further Experimentation
+-----------------------
 
-Working forward from the infonub, it's got me curious about the firmware image
-entry-point. It's 2 MiB total, but even a very rough analysis shows that it
-seems to be made of several different kinds of binaries, glued together.
-There's what appears to be a large application image, compiled C or C++ code,
-with mostly thumb opcodes and some ARM mixed in. There's a data segment after
-that, and some other smaller segments scattered about.
+At this point, I have enough info to write my own flasher tool and begin
+experimenting live. A few more facts become apparent:
 
-Here's what I gather of the memory map so far:
+ - As suspected, the first 0x10000 bytes of flash are write-protected and the
+   firmware appears to ignore the data we send for this portion of the image.
+   This is good. It means we can't accidentally overwrite the bootloader, and
+   it means we can distribute open source firmware images without including
+   the original copyrighted bootloader image. An official firmware image with
+   the first 0x10000 bytes blanked to 0xFF will still load just fine. I chose
+   not to test an image with all 0x00, in case the firmware programs these
+   bits and overwrites the bootloader.
 
-  00000000 - 0000ffff      64 KiB      First 64k is a protected bootloader area most likely. 
-                                       I suspect (hope?) that this can't be overwritten by the loader commands above.
+ - The infonub in the last 48 bytes of flash is indeed used to validate the
+   firmware image before the bootloader invokes it. A flasher bug which
+   blanked the infonub would leave the drive in bootloader mode. The
+   bootloader has a version string of "BOOT", as observed in disassembly, and
+   it responds to the same firmware programming commands. It appears to just
+   be a tiny subset of the usual firmware image.
 
-    00000000 - 00000fff     4 KiB      Unknown! Fairly dense bytes, could be encrypted or obfuscated.
-    00001000 - 0000dfff    52 KiB      Plaintext ARM code and data area for the bootloader.
-    0000e000 - 0000ffff     8 KiB      More mystery data.
+ - It will be important to find a way to forcibly enter bootloader mode even
+   if the infonub appears to be correct, so that we can recover from firmware
+   images that have a correct infonub but which don't support the firmware
+   update protocol correctly.
+ 
+   I tried a few combinations of powerup and button press. I can prevent
+   normal boot, but so far nothing enters bootloader mode yet.
+
+ - The first 4096 bytes of the bootloader appear to be random, and I've
+   located at least one procedure call targetting this area. It would appear
+   that this is an encrypted code segment for the bootloader. No obvious
+   weaknesses show yet, so I'm putting this area on the back burner until I
+   know more about the rest of the bootloader.
+
+
+Memory Map
+----------
+
+Very rough work in progress...
+
+  00000000 - 0000ffff      64 KiB      Protected boot sector in flash
+  00000000 - 00000fff       4 KiB      Encrypted code region
+  00001000                             Possible bootloader entry? 
+
+  0000e000 - 0000ffff       8 KiB      More mystery data.
                                             My best guess: Some kind of volume info or signature for the bootloader.
                                             Includes signature string at e060: "MoaiEasterIslandThomasYoyo(^o^)/",
                                             which we see repeated at 17f860.
 
-    0017f800 - 00182000?               Similar mystery data; possibly pertaining
-                                        to the application image rather than bootloader here.
+  0017f800 - 00182000?                 Similar mystery data; possibly pertaining
+                                            to the application image rather than bootloader here.
 
   000010000                            Plausible entry vector table for application image. (Interface from bootloader to main program)
   
