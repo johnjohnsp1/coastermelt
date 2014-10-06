@@ -20,30 +20,21 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "tinyscsi.h"
+#include "mt1939.h"
 
 int main(int argc, char** argv)
 {
     TinySCSI scsi;
+    MT1939::DeviceInfo info; 
 
-    if (!scsi.open(0x0e8d, 0x1956)) {
+    if (!MT1939::open(scsi)) {
         return 1;
     }
 
-    // Read firmware version info
-
-    uint8_t cdbReadVersion[] = {0xff, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa};
-    uint8_t version[8];
-
-    if (!scsi.in(cdbReadVersion, sizeof cdbReadVersion, version, sizeof version)) {
+    if (!MT1939::deviceInfo(scsi, &info)) {
         return 1;
     }
 
-    printf("Version info:");
-    for (unsigned i = 0; i < sizeof version; i++) {
-        printf(" %02x", version[i]);
-    }
-    printf("\n");
-
+    info.print();
     return 0;
 }
