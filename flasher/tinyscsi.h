@@ -146,12 +146,14 @@ inline bool TinySCSI::open(uint16_t idVendor, uint16_t idProduct)
     // Now yank the device away from the operating system
     mInterface = (*mmc)->GetSCSITaskDeviceInterface(mmc);
     if (!mInterface || kIOReturnSuccess != (*mInterface)->ObtainExclusiveAccess(mInterface)) {
-        fprintf(stderr, "[SCSI] Can't get exclusive access to the device\n");
+        fprintf(stderr, "[SCSI] Can't get exclusive access to the device. If there's a disc in the drive, try ejecting it.\n");
         return false;
     }
 
     // We only use one active task at a time
     mTask = (*mInterface)->CreateSCSITask(mInterface);
+
+    fprintf(stderr, "[SCSI] Device opened\n");
     return true;
 }
 
@@ -184,14 +186,6 @@ inline bool TinySCSI::command(uint8_t* cdb, unsigned cdbLen, DataDirection dir, 
 {
     memset(&result, 0, sizeof result);
 
-    if (kIOReturnSuccess != (*mTask)->ResetForNewTask(mTask)) {
-        return false;
-    }
-
-    if (kIOReturnSuccess != (*mTask)->SetCommandDescriptorBlock(mTask, (UInt8*)cdb, cdbLen)) {
-        return false;
-    }
-
     uint32_t transferDirection;
     SCSITaskSGElement sgElement;
 
@@ -210,24 +204,30 @@ inline bool TinySCSI::command(uint8_t* cdb, unsigned cdbLen, DataDirection dir, 
             transferDirection = kSCSIDataTransfer_NoDataTransfer;
     }
 
-
-    if (kIOReturnSuccess != (*mTask)->SetScatterGatherEntries(mTask, &sgElement, 1, dataLen, transferDirection)) {
-        return false;
-    }
-
-    if (kIOReturnSuccess != (*mTask)->SetTimeoutDuration(mTask, 30000)) {
+    if (kIOReturnSuccess != (*mTask)->ResetForNewTask(mTask) ||
+        kIOReturnSuccess != (*mTask)->SetCommandDescriptorBlock(mTask, (UInt8*)cdb, cdbLen) ||
+        kIOReturnSuccess != (*mTask)->SetScatterGatherEntries(mTask, &sgElement, 1, dataLen, transferDirection) ||
+        kIOReturnSuccess != (*mTask)->SetTimeoutDuration(mTask, 30000)) {
+        fprintf(stderr, "[SCSI] Failed to set up SCSI task\n");
         return false;
     }
 
     if (kIOReturnSuccess != (*mTask)->ExecuteTaskSync(mTask, &result.senseData, &result.taskStatus, &result.transferCount)) {
+        fprintf(stderr, "[SCSI] Failed to execute SCSI task\n");
         return false;
     }
 
     SCSIServiceResponse serviceResponse = kSCSIServiceResponse_Request_In_Process;
-    if (kIOReturnSuccess != (*mTask)->GetSCSIServiceResponse(mTask, &serviceResponse)) {
+    if (kIOReturnSuccess != (*mTask)->GetSCSIServiceResponse(mTask, &serviceResponse) ||
+        serviceResponse != kSCSIServiceResponse_TASK_COMPLETE) {
+        fprintf(stderr, "[SCSI] Task not complete after synchronous execute?\n");
         return false;
     }
 
-    return serviceResponse == kSCSIServiceResponse_TASK_COMPLETE &&
-           result.taskStatus == kSCSITaskStatus_GOOD;
+    if (result.taskStatus != kSCSITaskStatus_GOOD) {
+        fprintf(stderr, "[SCSI] Command error\n");
+        return false;
+    }
+
+    return true;
 }
