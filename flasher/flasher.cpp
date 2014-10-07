@@ -26,6 +26,7 @@ int main(int argc, char** argv)
 {
     TinySCSI scsi;
     MT1939::DeviceInfo info; 
+    MT1939::FirmwareImage fw;
 
     if (!MT1939::open(scsi)) {
         return 1;
@@ -36,16 +37,35 @@ int main(int argc, char** argv)
     }
     info.print();
 
-    if (argc != 2) {
-        fprintf(stderr, "usage: %s firmware.bin\n", argv[0]);
+    // Various usage formats...
+
+    if (argc == 1) {
+        return 0;
+
+    } else if (argc == 2 && !strcmp("--erase", argv[1])) {
+        fw.erase();
+
+    } else if (argc == 2 && fw.open(argv[1])) {
+        fprintf(stderr, "Firmware image loaded from disk\n");
+
+    } else {
+        fprintf(stderr,
+            "\n"
+            "usage:\n"
+            "    mtflash          Shows device version info, changes nothing\n"
+            "    mtflash fw.bin   Program a 2MB raw firmware image file.\n"
+            "                     The first 64 kiB is locked and can't be programmed,\n"
+            "                     so these bytes in the image are ignored.\n"
+            "    mtflash --erase  Send an image of all 0xFFs, erasing the unlocked\n"
+            "                     portions of flash.\n");
         return 1;
     }
 
-    MT1939::FirmwareImage fw;
-    if (!fw.open(argv[1])) {
-        return 1;
-    }
     fw.print();
+
+    unsigned delay = 5;
+    fprintf(stderr, "--- WRITING in %d seconds ---\n", delay);
+    sleep(delay);
 
     if (!MT1939::writeFirmware(scsi, &fw)) {
         return 1;

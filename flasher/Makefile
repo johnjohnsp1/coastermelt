@@ -1,11 +1,12 @@
-LDFLAGS := -framework CoreFoundation -framework IOKit
+BIN := mtflash
 
-BIN := flasher
 OBJS := flasher.o
+
+LDFLAGS := -framework CoreFoundation -framework IOKit
 
 all: $(BIN)
 
-flasher: $(OBJS)
+$(BIN): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $<
 
 %.o: %.cpp *.h

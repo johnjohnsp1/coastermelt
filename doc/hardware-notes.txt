@@ -80,9 +80,12 @@ Components
 Test Points
 ===========
 
-- Top side has only fiducial markers and two very small test points at the
-  bottom-right corner of the SoC. These are probably spare pins for rework,
-  the spacing looks too crowded for this to be useful in production.
+Top side:
+
+- Fiducial markers in corners, look like test points but no connection.
+- Most test points are obscured by solder balls. Some of these may be vias
+  that are intentionally or accidentally untented. Some may be intentional
+  test points.
 
 Bottom side:
 
@@ -96,6 +99,11 @@ Bottom side:
 - Three via test points are especially elongated and form a row adjacent to
   the SoC thermal pad. These seem most likely to be a factory programming
   interface.
+    - Viewed with USB connector in top-right corner, from left to right,
+      numbering these pads 1, 2, 3.
+    - Pads 1 and 2 float near 0v
+    - Pad 3 is at 3.3v
+    - Possibly a serial interface?
 
 
 Wiring Harness

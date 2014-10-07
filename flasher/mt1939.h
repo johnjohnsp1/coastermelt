@@ -50,6 +50,7 @@ public:
 
         bool open(const char *filename);
         void print();
+        void erase();
     };
 
     enum FirmwareWriteState {
@@ -181,6 +182,11 @@ inline bool MT1939::FirmwareImage::open(const char *filename)
 
     fclose(f);
     return true;
+}
+
+inline void MT1939::FirmwareImage::erase()
+{
+    memset(&bytes[0], 0xFF, sizeof bytes);
 }
 
 inline void MT1939::FirmwareImage::print()
