@@ -1,0 +1,65 @@
+=================
+MT1939 Bootloader
+=================
+
+Random disorganized data from earlier experiments...
+This file will turn into a document about how to use the bootloader as an
+open source firmware developer.
+
+---
+
+At this point, I have enough info to write my own flasher tool and begin
+experimenting live. A few more facts become apparent:
+
+ - As suspected, the first 0x10000 bytes of flash are write-protected and the
+   firmware appears to ignore the data we send for this portion of the image.
+   This is good. It means we can't accidentally overwrite the bootloader, and
+   it means we can distribute open source firmware images without including
+   the original copyrighted bootloader image. An official firmware image with
+   the first 0x10000 bytes blanked to 0xFF will still load just fine. I chose
+   not to test an image with all 0x00, in case the firmware programs these
+   bits and overwrites the bootloader.
+
+ - The infonub in the last 48 bytes of flash is indeed used to validate the
+   firmware image before the bootloader invokes it. A flasher bug which
+   blanked the infonub would leave the drive in bootloader mode. The
+   bootloader has a version string of "BOOT", as observed in disassembly, and
+   it responds to the same firmware programming commands. It appears to just
+   be a tiny subset of the usual firmware image.
+
+ - It will be important to find a way to forcibly enter bootloader mode even
+   if the infonub appears to be correct, so that we can recover from firmware
+   images that have a correct infonub but which don't support the firmware
+   update protocol correctly.
+ 
+   I tried a few combinations of powerup and button press. I can prevent
+   normal boot, but so far nothing enters bootloader mode yet.
+
+ - The first 4096 bytes of the bootloader appear to be random, and I've
+   located at least one procedure call targetting this area. It would appear
+   that this is an encrypted code segment for the bootloader. No obvious
+   weaknesses show yet, so I'm putting this area on the back burner until I
+   know more about the rest of the bootloader.
+
+Memory Map
+----------
+
+Very rough work in progress...
+
+  00000000 - 0000ffff      64 KiB      Protected boot sector in flash
+  00000000 - 00000fff       4 KiB      Encrypted code region
+  00001000                             Possible bootloader entry? 
+
+  0000e000 - 0000ffff       8 KiB      More mystery data.
+                                            My best guess: Some kind of volume info or signature for the bootloader.
+                                            Includes signature string at e060: "MoaiEasterIslandThomasYoyo(^o^)/",
+                                            which we see repeated at 17f860.
+
+  0017f800 - 00182000?                 Similar mystery data; possibly pertaining
+                                            to the application image rather than bootloader here.
+
+  000010000                            Plausible entry vector table for application image. (Interface from bootloader to main program)
+  
+  001fffd0 - 001fffff      48 bytes    Firmware infonub
+
+~MeS`14

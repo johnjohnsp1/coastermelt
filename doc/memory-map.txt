@@ -1,0 +1,21 @@
+=================
+MT1939 Memory Map
+=================
+
+Hardware Memory Map
+-------------------
+
+00000000 - 001fffff      Flash (2MB)
+00000000 - 0000ffff      Write-protected boot block (64kB)
+02000000                 Main SRAM
+04000000                 Memory mapped I/O
+
+
+Bootloader
+----------
+
+00000000 - 00000fff      Encrypted page
+00001000 - 000013ff      ARM startup chunk 1
+00001400 - 00002fff      ARM startup chunk 2
+00003000 - 0000dfff      ARM main program, labeled "MT1939 Boot Code"
+0000e000 - 0000ffff      8051 bootloader image
