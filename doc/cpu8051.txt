@@ -1,0 +1,26 @@
+=============
+8051 CPU core
+=============
+
+The 8051 core implements a USB Mass Storage device normally.
+
+- It has memory mapped I/O in XDATA
+- It probably has 8 kB of program memory
+- Seems to have direct access to USB hardware
+
+
+Inter-Processor Communication
+-----------------------------
+
+The 8051 and ARM processors communicate via a memory mapped FIFO and/or shared
+memory regions.
+
+
+ Firmware region 0010 - 009c
+    This is copied to RAM (just above the stack, at 2000D80) early during boot
+    Overlaps with the 8051 interrupt vector table
+    0010 begins in a gap between interrupt vectors, includes a lookup table parsed by ARM code
+
+
+
+~MeS`14

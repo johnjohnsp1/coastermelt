@@ -2,64 +2,107 @@
 MT1939 Bootloader
 =================
 
-Random disorganized data from earlier experiments...
-This file will turn into a document about how to use the bootloader as an
-open source firmware developer.
 
----
+Notation
+--------
 
-At this point, I have enough info to write my own flasher tool and begin
-experimenting live. A few more facts become apparent:
+All numbers are hexadecimal.
 
- - As suspected, the first 0x10000 bytes of flash are write-protected and the
-   firmware appears to ignore the data we send for this portion of the image.
-   This is good. It means we can't accidentally overwrite the bootloader, and
-   it means we can distribute open source firmware images without including
-   the original copyrighted bootloader image. An official firmware image with
-   the first 0x10000 bytes blanked to 0xFF will still load just fine. I chose
-   not to test an image with all 0x00, in case the firmware programs these
-   bits and overwrites the bootloader.
+Memory accesses are denoted as Width[Address], where Width is B, H, or (blank)
+for Byte, Halfword, or Word respectively.
 
- - The infonub in the last 48 bytes of flash is indeed used to validate the
-   firmware image before the bootloader invokes it. A flasher bug which
-   blanked the infonub would leave the drive in bootloader mode. The
-   bootloader has a version string of "BOOT", as observed in disassembly, and
-   it responds to the same firmware programming commands. It appears to just
-   be a tiny subset of the usual firmware image.
+C-style operators "|=", "&=", etc. are shorthand for read-modify-write
+operations which require a load and store.
 
- - It will be important to find a way to forcibly enter bootloader mode even
-   if the infonub appears to be correct, so that we can recover from firmware
-   images that have a correct infonub but which don't support the firmware
-   update protocol correctly.
- 
-   I tried a few combinations of powerup and button press. I can prevent
-   normal boot, but so far nothing enters bootloader mode yet.
-
- - The first 4096 bytes of the bootloader appear to be random, and I've
-   located at least one procedure call targetting this area. It would appear
-   that this is an encrypted code segment for the bootloader. No obvious
-   weaknesses show yet, so I'm putting this area on the back burner until I
-   know more about the rest of the bootloader.
 
 Memory Map
 ----------
 
-Very rough work in progress...
+00000000 - 00000fff      Encrypted page?
+                         May be transparently decrypted on exec?
+                         - ARM code issues function calls into this page
+                         - Looks like part of a syscall interface
 
-  00000000 - 0000ffff      64 KiB      Protected boot sector in flash
-  00000000 - 00000fff       4 KiB      Encrypted code region
-  00001000                             Possible bootloader entry? 
+00001000 - 000013ff      ARM startup code
+                         - Low level bootloader
+                
+00001400 - 00002fff      ARM application code
+                         - Includes main loop, SCSI command handlers
+                         - Might be usermode
+                         - Probably compiled using a higher level SDK
 
-  0000e000 - 0000ffff       8 KiB      More mystery data.
-                                            My best guess: Some kind of volume info or signature for the bootloader.
-                                            Includes signature string at e060: "MoaiEasterIslandThomasYoyo(^o^)/",
-                                            which we see repeated at 17f860.
+00003000 - 0000dfff      ARM library code
+                         - Bulk of code is here
+                         - Invoked by startup code
 
-  0017f800 - 00182000?                 Similar mystery data; possibly pertaining
-                                            to the application image rather than bootloader here.
+0000e000 - 0000ffff      8051 firmware image
+                         - Self contained, maps to 8051 code memory
+                         - Unknown how this is loaded
+                         - Implements USB Storage protocol
+                         - Interprocessor communication pipe between ARM and 8051
 
-  000010000                            Plausible entry vector table for application image. (Interface from bootloader to main program)
+Initialization
+--------------
+
+First known step:
+
+- ARM processor starts, PC=1000 T=0
+  Running first bootloader section (1000-13ff) 
   
-  001fffd0 - 001fffff      48 bytes    Firmware infonub
+  - SoC main reset?
+    
+    [4001000] |= 10
+    [4001000] &= 10
+
+  - Set up RAM segments?
+    First one is 6 kB, second one is 2 MB.
+
+    nop nop
+    [4020f20] = 02000000
+    nop nop
+    [4020f24] = 020019ff
+    nop nop
+
+    This register address calculated based on ram address; could be protection info?
+
+    [4020f04] |= 0x800
+
+    This seems related to the RAM segment, but it's reading values from the
+    encrypted page! And they're unaligned addresses! It's probably safe to say
+    the hardware does something special with these addresses.
+
+    [4030f04] = [2]
+    [4031004] = [8]
+    [4031000] = 40000800
+
+    Addresses calculated based on masking off 1ffff/2
+
+    [40300f4] = 1ffff
+    [4030f20] = 1e00000
+    [4030f24] = 1ffffff
+
+    [4030f40] = 2000000
+    [4030f44] = 20019ff
+
+    [4030f04] = 8802
+
+  - Something else!
+
+    [4011f04] |= 0xB00
+
+  - Stack to 2000d80
+  - CPSR to D3
+  - Branch to next bootloader section, "MT1939 Boot Code" at 3010.
+
+- Boot code 3010
+
+
+
+Infonub
+-------
+
+There's a 48-byte region at the end of flash (001fffd0 - 001fffff) that I've
+been calling the "infonub". It's a tiny nub of versioning and integrity data that the bootloader checks before invoking the application firmware.
+
 
 ~MeS`14
