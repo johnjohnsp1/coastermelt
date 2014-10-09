@@ -170,5 +170,8 @@ SE-506CB_TS00.bin stored:06e8 calc:06e8
 >>> file_info('SE-506CB_TS01.bin')
 SE-506CB_TS01.bin stored:5918 calc:5918
 
+*** Verified that this is not the ONLY checksum in use. A trivially hacked
+    firmware will not boot even with this checksum fixed.
+
 
 ~MeS`14
