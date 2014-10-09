@@ -7,6 +7,10 @@ Hardware Memory Map
 
 00000000 - 001fffff      Flash (2MB)
 00000000 - 0000ffff      Write-protected boot block (64kB)
+00400000 - 00400fff      Writeable 4kB page
+                            Set up via reg [4011f08]=00400000
+                            Copy of app firmware starting at 0x10000
+
 02000000                 Main SRAM
 04000000                 Memory mapped I/O
 

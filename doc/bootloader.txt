@@ -96,6 +96,35 @@ First known step:
 
 - Boot code 3010
 
+   ...
+
+   Theory: Looks like the ARM portion starts first, but it always boots up
+           the 8051 portion and puts it in control. It copies over relevant
+           portions of the application firmware, then the 8051 decides whether
+           to boot.
+
+
+Magic numbers
+-------------
+
+a1b9d358 13201959
+
+
+
+Validation
+----------
+
+Bootloader reads two 16-byte regions:
+
+ 01ff000: d7a3 e98e 5a3a 2573 357d 324b 0ccb 1f53  ....Z:%s5}2K...S
+ 0010ff0: d7a3 e98e 5a3a 2573 357d 324b 0ccb 1f53  ....Z:%s5}2K...S
+
+From near the beginning and end of the application firmware image.
+All 16-byte signatures were identical in the images seen so far.
+
+It looks like they're intended to be identical, but I haven't yet
+determined exactly how they're checked. Seems like it involves the
+8051 processor as well.
 
 
 Infonub
@@ -103,6 +132,8 @@ Infonub
 
 There's a 48-byte region at the end of flash (001fffd0 - 001fffff) that I've
 been calling the "infonub". It's a tiny nub of versioning and integrity data that the bootloader checks before invoking the application firmware.
+
+  * Also the smaller region at 1ff000.
 
 
 ~MeS`14

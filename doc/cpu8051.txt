@@ -21,6 +21,8 @@ memory regions.
     Overlaps with the 8051 interrupt vector table
     0010 begins in a gap between interrupt vectors, includes a lookup table parsed by ARM code
 
+    +20   Address of 8051 firmware memory as mapped into ARM address space.
+          Calculated based on address from [4030f5c], but the specifics may depend on hardware version.
 
 
 ~MeS`14
