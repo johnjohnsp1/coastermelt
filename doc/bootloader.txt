@@ -111,8 +111,8 @@ a1b9d358 13201959
 
 
 
-Validation
-----------
+Signature
+---------
 
 Bootloader reads two 16-byte regions:
 
@@ -126,14 +126,49 @@ It looks like they're intended to be identical, but I haven't yet
 determined exactly how they're checked. Seems like it involves the
 8051 processor as well.
 
+The one at 1ff000 is read just after the infonub checksum is validated.
+
+
 
 Infonub
 -------
 
 There's a 48-byte region at the end of flash (001fffd0 - 001fffff) that I've
-been calling the "infonub". It's a tiny nub of versioning and integrity data that the bootloader checks before invoking the application firmware.
+been calling the "infonub". It's a tiny nub of versioning and integrity data
+that the bootloader checks before invoking the application firmware.
 
-  * Also the smaller region at 1ff000.
+1fff90: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ................
+1fffa0: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ................
+1fffb0: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ................
+1fffc0: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ................
+1fffd0: 54 53 53 54 63 6f 72 70 42 44 44 56 44 57 20 53 TSSTcorpBDDVDW S
+1fffe0: 45 2d 35 30 36 43 42 20 54 53 30 31 3e 22 04 00 E-506CB TS01>"..
+1ffff0: 54 53 20 ff ff ff ff ff aa aa ff ff ff ff 59 18 TS ...........Y.
+
+Most of this is clear vendor, product, and revision info.
+A lot of it is boring.
+
+The last two bytes are a really dumb 16-bit checksum:
+
+def get_stored_checksum(fw):
+    return (ord(fw[0x1ffffe]) << 8) | ord(fw[0x1fffff])
+
+def calculate_checksum(fw):
+    s = 0
+    for i in range(0x10000, 0x1e2000):
+        s = 0xffff & (s + ord(fw[i]))
+    return s
+
+def file_info(name):
+    fw = open(name, 'rb').read()
+    print '%s stored:%04x calc:%04x' % (
+        name, get_stored_checksum(fw), calculate_checksum(fw))
+
+>>> file_info('SE-506CB_TS00.bin')
+SE-506CB_TS00.bin stored:06e8 calc:06e8
+
+>>> file_info('SE-506CB_TS01.bin')
+SE-506CB_TS01.bin stored:5918 calc:5918
 
 
 ~MeS`14
