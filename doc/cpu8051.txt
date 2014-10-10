@@ -2,10 +2,28 @@
 8051 CPU core
 =============
 
-The 8051 core implements a USB Mass Storage device normally.
+There appears to be an 8051 CPU core which acts as an interface controller.
+In this case, it implements a USB Mass Storage device.
 
-It's unclear whether the 8051 is considered the "main" processor or the ARM
-during normal operation. Both seem to pass commands to each other.
+The 8051 firmware is only 8 kB, and it appears to be a single generic firmware
+image that's shared by the bootloader and all versions of application firmware
+observed. All application firmwares have an identical image that's signed at
+the end with "~I_blieve:)Faith". The bootloader contains an image that is
+signed with random-looking hex bytes but which is otherwise identical.
+
+Both the 8051 and ARM implement "main loops" which seem to consist entirely of
+processing messages received over inter-processor communication pipes. So, it
+would not appear on first inspection that either processor is really in the
+driver's seat, but ultimately any code or data which differentiates the
+functionality of the bootloader versus the normal firmware must live on the
+ARM side of the channel. So this tells us that the tiny 8051 firmware image is
+probably intended to be very generic. From the perspective of a firmware
+engineer on the optical drive, this is probably a "black box" binary blob that
+makes the USB controller work.
+
+It seems like we can use this processor for whatever we like; the firmware
+doesn't seem to be stored in flash, it appears to be in a memory mapped region
+initialized by the ARM.
 
 Of all the weird modified 8051 cores people use, this one seems to be quite
 tame. In fact, it seems to be fairly light on features. No additional SFRs
@@ -41,7 +59,6 @@ Inter-Processor Communication
 
 The 8051 and ARM processors communicate via a memory mapped FIFO and/or shared
 memory regions.
-
 
  Firmware region 0010 - 009c
     This is copied to RAM (just above the stack, at 2000D80) early during boot
