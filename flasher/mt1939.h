@@ -93,6 +93,16 @@ inline bool MT1939::extendedInquiry(TinySCSI &scsi, ExtendedInquiryData* data)
 
 inline bool MT1939::deviceInfo(TinySCSI &scsi, DeviceInfo* data)
 {
+    // A hunch... try out Request Sense. I think the firmware may be capable of leaking data
+    // via this command.  See 0x219E in the bootloader ARM image.
+
+    uint8_t b[0x24];
+    uint8_t cdb[] = {0x03, 0x00, 0x00, 0x00, sizeof b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    if (scsi.in(cdb, sizeof cdb, b, sizeof b)) {
+        fprintf(stderr, "Request Sense experiment:\n");
+        hexdump(b, sizeof b);
+    }
+
     return extendedInquiry(scsi, &data->inquiry) && readFirmwareVersionInfo(scsi, &data->firmware);
 }
 

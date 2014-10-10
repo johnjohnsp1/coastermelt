@@ -41,6 +41,20 @@ Memory Map
                          - Implements USB Storage protocol
                          - Interprocessor communication pipe between ARM and 8051
 
+00010000 - 001e1fff      Loadable firmware image (1863 kB)
+
+001e2000 - 001fffff      Bootloader information region (120 kB)
+                         - Not checksummed
+                         - Lots of reserved blank space
+                         - Interesting data table at 1f2000
+                         - Might be keys at 1f2080
+                         - Zero-padded 256-byte blob at 1fe000
+                              Opcodes or other structured data,
+                              some aligned 16-bit values too
+                         - Signature block at 1ff000, matches 16 bytes at 10ff0
+                         - Infonub at 1fffd0 (product/vendor/version, weak checksum)
+
+
 Initialization
 --------------
 
@@ -98,11 +112,6 @@ First known step:
 
    ...
 
-   Theory: Looks like the ARM portion starts first, but it always boots up
-           the 8051 portion and puts it in control. It copies over relevant
-           portions of the application firmware, then the 8051 decides whether
-           to boot.
-
 
 Magic numbers
 -------------
@@ -128,6 +137,9 @@ determined exactly how they're checked. Seems like it involves the
 
 The one at 1ff000 is read just after the infonub checksum is validated.
 
+
+ xxxxxxxx - 001e2000    blocksize 1000
+  
 
 
 Infonub
@@ -172,6 +184,52 @@ SE-506CB_TS01.bin stored:5918 calc:5918
 
 *** Verified that this is not the ONLY checksum in use. A trivially hacked
     firmware will not boot even with this checksum fixed.
+
+
+Shared Block
+------------
+
+Not sure if this is just an internal command passing mechanism or if it's
+intended for use by app firmware, but there are sure some juicy bits here.
+
+2000d80 - 2000e0b    
+  Seems to be shared by the 8051 and ARM processors.
+
+word [ 0]
+word [ 4]
+   b [ 8]
+   b [ 9]
+   b [ a]  Transfer length
+   b [ b]
+word [ c]
+word [10]  Address
+            1e2000
+         >= 200000   Causes exit from bootloader into firmware
+    
+word [14]  Size? / Address?
+          <  10000   Different bootloader paths
+    
+word [18]
+word [1c]
+word [20]  ARM address of mapped 8051 memory
+             +0000   Might be RAM? Related to signature checking?
+             +1000   Start of firmware RAM
+     
+word [24]  Index inside the 8051 mapped area (inquiry data?)
+word [28]  SCSI command response
+word [2c]
+word [30]
+
+Another shared block, used much less. Been calling this "zr" (zero reference)
+since I saw a reference associated with a zero'ed (bss) segment in the 8051
+MCU setup. Whereas the regular shared block is referenced to 0xE010 in the
+8051 image, zr is referenced to 0xE09C. It's right after the other shared block:
+
+2000e0c - 2000ee7
+
+   b [31]  Checked early on in INQUIRY?
+   b [3d]
+   b [5c]  SCSI command data block, starting with opcode byte
 
 
 ~MeS`14
