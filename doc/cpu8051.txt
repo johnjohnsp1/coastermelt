@@ -4,9 +4,36 @@
 
 The 8051 core implements a USB Mass Storage device normally.
 
-- It has memory mapped I/O in XDATA
-- It probably has 8 kB of program memory
-- Seems to have direct access to USB hardware
+It's unclear whether the 8051 is considered the "main" processor or the ARM
+during normal operation. Both seem to pass commands to each other.
+
+Of all the weird modified 8051 cores people use, this one seems to be quite
+tame. In fact, it seems to be fairly light on features. No additional SFRs
+beyond the standard ones that I can see, only 128 bytes of internal RAM. All
+the I/O occurs via XDATA, which doesn't seem to have any RAM attached to it.
+
+The main I/O idiom is to use one XDATA address as a hardware FIFO to read or
+write bytes. This is pretty fast, especially if the 8051 runs at a high clock
+rate. (seems likely)
+
+
+Memory Regions
+--------------
+
+- Program Memory
+  8 kB region
+
+  Serves as the "Internal ROM" in 8051 architecture
+  Loaded/mapped by the ARM core.
+
+  An example of this region (not necessarily execute-in-place) is at 0xE000 in
+  the bootloader flash.
+
+- Internal RAM
+  128 bytes, from 00 to 7F.
+
+- XDATA
+  Memory mapped IO regions at 4Bxx and 4Dxx
 
 
 Inter-Processor Communication
