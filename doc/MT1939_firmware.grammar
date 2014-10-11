@@ -2,20 +2,22 @@
 <ufwb version="1.9">
     <grammar name="Mediatek MT1939 Firmware" start="id:6" author="Micah Elizabeth Scott" email="micah@misc.name" fileextension="bin" uti="com.apple.macbinary-archive">
         <description>Firmware update images for the MT1939 optical drive system on a chip.</description>
-        <structure id="7" encoding="ISO_8859-1:1987" endian="big" signed="no"/>
         <structure name="Firmware Image" id="6" length="2097152" encoding="ISO_8859-1:1987" endian="little" signed="no">
-            <structure name="Bootloader" id="14" length="65536">
-                <structure name="EncryptedPage" id="9" length="4096"/>
-                <structure name="Boot0" id="12" length="1024"/>
-                <structure name="BootApp" id="16" length="7168"/>
-                <structure name="BootLibrary" id="18" length="45056"/>
-                <structure name="Boot8051" id="20" length="8192"/>
+            <structure name="Bootloader" id="7" length="65536">
+                <structure name="EncryptedPage" id="8" length="4096"/>
+                <structure name="Boot0" id="10" length="1024"/>
+                <structure name="BootApp" id="12" length="7168"/>
+                <structure name="BootLibrary" id="14" length="45056"/>
+                <structure name="Boot8051" id="16" length="8192"/>
             </structure>
-            <structure name="AppFirmware" id="26" length="1908736">
-                <structure name="padding" id="32" length="1505280"/>
-                <structure name="Firmware8051" id="30" length="8192"/>
+            <structure name="AppFirmware" id="19" length="1908736">
+                <structure name="padding" id="20" length="1505280"/>
+                <structure name="Firmware8051" id="22" length="8192"/>
             </structure>
-            <structure name="BootInfoRegion" id="28" length="122880"/>
+            <structure name="BootInfoRegion" id="25" length="122880">
+                <structure name="padding" id="26" length="65536"/>
+                <structure name="MostlyZeroes" id="28" length="32896"/>
+            </structure>
         </structure>
     </grammar>
 </ufwb>

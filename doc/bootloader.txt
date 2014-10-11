@@ -118,6 +118,39 @@ First known step:
   (Sadly this SVC leads into the encrypted area...)
 
 
+- Hard to nail down exactly which checks go into running or not running the image,
+  since it's a huge foresty state machine. Here's a running list of things that
+  seem to matter:
+
+  - Signature at 1ff000 matches 10ff0
+  - Checksum at 1ffffe matches, over range 10000-1e0000
+
+
+App-select Register
+-------------------
+
+The word register at [4002058] seems to be heavily involved in the process of
+deciding what path the bootloader takes; whether to rn the app, and a few
+other things. So I called it "appselect".
+
+Just prior to the main loop:
+
+  [4002058] |= 40
+  (Set bit 6)
+
+In the main loop:
+
+  If bit6 is 0, act as if the checksum test failed.
+
+  If bit6 is 1, enable an increment by 1f000 and transfer of 1000 bytes on the
+  way out (setting ref[10] to 200000).
+
+Just prior to exit (after ref[10] >= 200000)
+
+  [4002058] |= 80
+  (Set bit 7)
+
+
 Magic numbers
 -------------
 

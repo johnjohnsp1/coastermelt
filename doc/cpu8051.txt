@@ -89,13 +89,22 @@ Shared Block
 
 Been abbreviating this as ref[index].
 
-word [ 0]
-word [ 4]
+   b [ 0]
+   b [ 1]
+   b [ 2]   = 0
+   b [ 3]  Oneshot bool flag, if set send SCSI 5 24 0 "Invalid field" error and clear flag.
+   b [ 4]
+   b [ 5]
+   b [ 6]
+   b [ 7]   = 0
    b [ 8]
    b [ 9]
    b [ a]  Transfer length
    b [ b]
-word [ c]
+word [ c]  Address (ARM)
+            Bytes
+            Used by boot_main_wrap_2 ARM in bootloader
+
 word [10]  Address (ARM)
             1e2000
          >= 200000   Causes exit from bootloader into firmware
@@ -117,10 +126,13 @@ word [20]  ARM address of mapped 8051 memory
            Calculated based on address from [4030f5c], but the specifics may
            depend on hardware version.
 
-word [24]  Index inside the 8051 mapped area (inquiry data?)
+word [24]  Index of what I'll call the "working packet" inside the 8051 mapped area, abbreviated wp[]
 word [28]  SCSI command response
 word [2c]
 word [30]
+word [3c]
+word [40]  Current ARM address inside from wp[]
+word [68]
 
 Another shared block, used much less. Been calling this zr[index] (zero
 reference) since I saw a reference associated with a zero'ed (bss) segment in
@@ -133,6 +145,7 @@ shared block:
    b [31]  Checked early on in INQUIRY?
    b [3d]
    b [5c]  SCSI command data block, starting with opcode byte
+   b [bc]  Internal error code byte, translated to scsi
 
 
 Main Loop
@@ -349,14 +362,15 @@ USB descriptors were found in RAM on the ARM side of the fence. During init:
     - descriptor copy function is the same in both cases
   
   Descriptor copy
-    - Writes to memory block at ref[24] (8051) using ref[20] as the ARM mapping base.
-    - Copy 8 bytes from boot USB descriptor table header to ref[24] + 18f0 on 8051 side:
+    Uses the "working packet" wp[], at ref[24] (8051) via the ref[20] ARM mapping base.
+
+    - Copy 8 bytes from boot USB descriptor table header to wp[18f0] on 8051 side:
       0 1 1 0 0 0 0 0
-    - Copy device descriptor to ref[24] + 18f8:
+    - Copy device descriptor to wp[18f8]:
       12 1 0 2 0 0 0 40 8d e 56 19 0 0 1 2 3 1
-    - Copy configuration descriptor, 0x20 bytes to ref[24] + 190a
-    - Copy string descriptors starting at ref[24] + 192a
-    - Copy device qualifier descriptor to ref[24] + 1a2a
+    - Copy configuration descriptor, 0x20 bytes to wp[190a]
+    - Copy string descriptors starting at wp[192a]
+    - Copy device qualifier descriptor to wp[1a2a]
       A 6 0 2 0 0 0 40 1 0
 
   IPC/log code 49b200aa
