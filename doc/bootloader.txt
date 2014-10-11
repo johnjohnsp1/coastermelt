@@ -220,6 +220,9 @@ word [20]  ARM address of mapped 8051 memory
              +0000   Might be RAM? Related to signature checking?
              +1000   Start of firmware RAM
      
+           Calculated based on address from [4030f5c], but the specifics may
+           depend on hardware version.
+
 word [24]  Index inside the 8051 mapped area (inquiry data?)
 word [28]  SCSI command response
 word [2c]

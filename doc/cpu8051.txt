@@ -64,11 +64,62 @@ memory regions.
 
  Firmware region 0010 - 009c
     This is copied to RAM (just above the stack, at 2000D80) early during boot
-    Overlaps with the 8051 interrupt vector table
-    0010 begins in a gap between interrupt vectors, includes a lookup table parsed by ARM code
+    Overlaps with the 8051 interrupt vector table.
+    This seems to be related to the "Shared Block" described in bootloader.txt
 
-    +20   Address of 8051 firmware memory as mapped into ARM address space.
-          Calculated based on address from [4030f5c], but the specifics may depend on hardware version.
 
+Main Loop
+---------
+
+A typical main loop on this processor handles inter-processor calls coming in from the ARM.
+
+One-time setup:
+    [4B94] = 0
+    [4D01] = 3
+    [4D04] = 46 'F'
+    [4B98] = 0
+    [4d92] = FE
+    [4b95] = 6
+    [4b73] = 94
+    [4d84] = 0
+
+Each loop:
+    Ready? [4d91] = 1
+    Sync? Read FIFO [4d90], repeat until byte is nonzero
+    Read opcode byte, opcode = [4d90]
+    Opcode switch
+
+Opcodes:
+
+    02   Takes some parameters, some data block parsing?
+    04   Send SCSI status, "USBS" packets   
+    05   USB block copy, optional "USBS" response
+    06     Variant of 08
+    07     Variant of 08
+    08   Copy USB header from IO memory to RAM ...
+    09     Variant of 08
+    0b     Variant of 0d
+    0a     Variant of 0d
+    0c     Variant of 0d
+    0d   Implements an entire transfer of some sort, with setup, loop, and status
+    0e   Read 8 byte struct from IO, simple parsing loop
+    0f   Very simple, 8-byte tag/length update?
+    16     Variant of 04
+    17     Variant of 05
+    18   Wrapper for other opcodes: 04 09 07 22 1e
+    1e   Complicated; involves timer, 32-bit length comparisons, two looping transfers
+    1f     Variant of 08
+    20     Variant of 08
+    21   SCSI completion: some small USB transfers, optionally fall through to 04
+    22     Variant of 08
+    23   SCSI completion: another small USB thing, falls through to 04
+    24     Variant of 23
+    25     Variant of 23
+    27   USB things, may fall through to 0e
+    28     Variant of 27 with different size calculation
+    29     Variant of 0d
+    3b   Store 2 bytes: Could be system mode or version info. Same address was cleared by a weird table-driven startup loop.
+    3c   Hardware reset?  [4db2]=30 delay [4db2]=20 [4db2]=30 delay [4db2]=20
+    3f   Low-level protocol thing, part of main loop. Sends IPC 83 'A' 'N' [4d91]. Get write/read count?
 
 ~MeS`14
