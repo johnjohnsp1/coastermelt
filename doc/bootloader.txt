@@ -224,4 +224,47 @@ SE-506CB_TS01.bin stored:5918 calc:5918
     firmware will not boot even with this checksum fixed.
 
 
+Image Validity
+--------------
+
+How does the bootloader decide that an application firmware image (everything
+from 10000 to 1fffff) is valid before executing it? If this validity check
+fails, the bootloader will present its own tiny USB storage interface that
+only supports firmware uploading.
+
+- The bootloader region from 0 through 10000 is explicitly NOT verified. It
+  seems to be completely ignored during upload. Possibly it was included in
+  the flashing procedure to support initial installation of the loader in th
+  factory using the same binary image?
+
+- There's a 16-bit checksum at 1ffffe, covering memory from 10000 up to
+  1e2000. This is necessary but not sufficieny for the firmware to boot.
+
+- Experimentally found an area that isn't validated
+
+  1e2000 - 1f2000  (64 kB).  This might be reserved for runtime storage,
+                             hence the nice round size and lack of checksum.
+                             It contains all FF in the shipping firmware images.
+
+  1f2000 - 1fa07f  (0x8080)  The beginning contains an important-looking table
+                             that I don't want to change until I know what I'm
+                             doing, but the end of this region is zero-padded.
+                             Changes here still allow the image to boot.
+
+  1fa080 -                   Changes here also seem fine. This whole region that
+                             isn't CRC-protected might not be validated, but lots
+                             of it is scary data tables that will probably brick
+                             the device if it does boot the modified image.
+
+
+* Test mod at 1baee, *is* caught by checksum.
+  Can't make the image boot at this point solely by fixing the checksum.
+  Looking for other copies of the sum, none found yet.
+  
+  Candidates for other checksums:
+
+     10424
+     
+
+
 ~MeS`14
