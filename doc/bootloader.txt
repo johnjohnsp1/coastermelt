@@ -112,6 +112,11 @@ First known step:
 
    ...
 
+  SVC 0x123456, R0=18 R1=20026
+    R1 could plausibly be an entry-related address
+
+  (Sadly this SVC leads into the encrypted area...)
+
 
 Magic numbers
 -------------
@@ -184,60 +189,6 @@ SE-506CB_TS01.bin stored:5918 calc:5918
 
 *** Verified that this is not the ONLY checksum in use. A trivially hacked
     firmware will not boot even with this checksum fixed.
-
-
-Shared Block
-------------
-
-Not sure if this is just an internal command passing mechanism or if it's
-intended for use by app firmware, but there are sure some juicy bits here.
-
-2000d80 - 2000e0b    
-  Seems to be shared by the 8051 and ARM processors.
-
-word [ 0]
-word [ 4]
-   b [ 8]
-   b [ 9]
-   b [ a]  Transfer length
-   b [ b]
-word [ c]
-word [10]  Address (ARM)
-            1e2000
-         >= 200000   Causes exit from bootloader into firmware
-    
-word [14]  Residual byte count
-          <  10000   Different bootloader paths
-    
-word [18]  Address (8051)
-             Stored (low 24 bits) in [4032010]
-
-word [1c]  Total byte count
-
-word [20]  ARM address of mapped 8051 memory
-           Aligned on a 16MB boundary (low 24 bits are zero?)
-
-             +0000   Might be RAM? Related to signature checking?
-             +1000   Start of firmware RAM
-     
-           Calculated based on address from [4030f5c], but the specifics may
-           depend on hardware version.
-
-word [24]  Index inside the 8051 mapped area (inquiry data?)
-word [28]  SCSI command response
-word [2c]
-word [30]
-
-Another shared block, used much less. Been calling this "zr" (zero reference)
-since I saw a reference associated with a zero'ed (bss) segment in the 8051
-MCU setup. Whereas the regular shared block is referenced to 0xE010 in the
-8051 image, zr is referenced to 0xE09C. It's right after the other shared block:
-
-2000e0c - 2000ee7
-
-   b [31]  Checked early on in INQUIRY?
-   b [3d]
-   b [5c]  SCSI command data block, starting with opcode byte
 
 
 ~MeS`14
