@@ -1,0 +1,51 @@
+==========================
+MT1939 Multiple Processors
+==========================
+
+The MT1939 system-on-chip has at least two, possibly several more CPU cores.
+
+- A powerful ARM core runs the bulk of the firmware, has access to the entire
+  32-bit address space, and seems to orchestrate the system boot process. It
+  does not seem to have direct USB connectivity.
+ 
+- A very small 8051 core (8kB program memory, 128 bytes RAM) seems to
+  implement USB Storage, but responsibilities are quite split with other parts
+  of the system and so far I haven't been able to locate an entire USB device
+  implementation. It's possible part of the USB stack lives either in
+  specialized hardware or in a different CPU core. This processor handles
+  assembling USB Storage response packets ("USBS" header) but it doesn't seem
+  to handle parsing the corresponding command packets, for example. And it
+  doesn't contain any USB descriptors- descriptors are uploaded to the 8051
+  somehow at runtime from the ARM.
+
+The bootloader itself is an ARM image that contains an 8051 image. The 8051
+image is included in every firmware image (including the boot sector) but each
+of these images appear to differ only in trivial ways, indicating that the
+8051 is probably seen as a "black box" to most of the system.
+
+The main TS00/TS01 firmware images contain a region after the main ARM
+firmware where several firmware images can be seen laid out in order and
+clearly separated by small alignment padding regions. These are, in order:
+
+1:  at 0x17F800, 0x2000 byte (8 KiB) for the 8051 CPU
+2:  at 0x181800, 0xc800 byte (50 kiB)
+3:  at 0x18e000, 0x54000 byte (336 kiB)
+
+All three images are included in the checksummed region of the main flash
+(prior to the bootloader info region and the runtime-writable region). The
+8051 image (1) is effectively identical in all firmwares, but images (2) and
+(3) show substantial differences between TS00 and TS01. From visual diff
+analysis, it looks like both images are uncompressed machine code, probably
+for a 16-bit or 8-bit microcontroller.
+
+Images (2) and (3) seem similar in structure; possibly two different images
+for the same microcontroller or same type of microcontroller. Alignment of
+repeated sections suggests an 8-bit variable length CISC architecture.
+
+Histogram is somewhat flat with spikes at 0x10 multiples. Might be compressed,
+but it might also just be a very dense instruction set or include a lot of
+random-looking literal data.
+
+Currently my bet is that this is for an onboard DSP. Might also be for the
+motor controller or laser control chips.
+

@@ -157,6 +157,22 @@ Magic numbers
 a1b9d358 13201959
 
 
+Vector Table
+------------
+
+The area from 10000 - 102ff is set aside for interrupt vectors:
+
+      10000: reset
+      10004: undefined instruction
+      10008: supervisor (reflect to boot sector 3C)
+      1000c: prefetch abort exception
+      10010: data abort exception 
+      10014: hardware interrupt? (reflect to boot sector 158)
+      1001c: fiq fast hardware interrupt
+
+Differences between TS00 and TS01 seem to only be related to code addresses
+changing; no validity checks in this section as far as I can tell.
+
 
 Signature
 ---------
@@ -264,7 +280,6 @@ only supports firmware uploading.
   Candidates for other checksums:
 
      10424
-     
 
 
 ~MeS`14
