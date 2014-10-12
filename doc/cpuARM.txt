@@ -92,11 +92,27 @@ Very rough notes, may be wildly wrong.
                                       1    Poll for bit=0 after logging to zr[c]
 
 4011000     Coprocessor and encryption memory mapping control
+            Possibly inter-processor message notification
 
-            - Used while booting firmware
+            4011000   uint32      Flags
+                                     80    Set at the top of bootloader app_main
+
+            4011008   uint32      Low 10 bits (count?) set to 1 in app_main
+
+            401100c   uint32      Flags
+                                      4    Set after polling [4011088]
+                                      2    Set / op / clear in app_main
+
+            4011010   uint8       Poll while (bit6==0), then while (bit7==1)
 
             4011040   uint32      Flags
                                       1    Set while booting app firmware, in bootloader
+
+            4011050   uint32      Flags
+                                      1    Cleared after polling [4011088]
+
+            4011088   uint32      Flags
+                                      1    Poll for bit=1 after setting [4011000] |= 80
 
             - Transparent 128-bit code decryption, possibly AES-ECB mode
 
@@ -112,21 +128,35 @@ Very rough notes, may be wildly wrong.
             IVT to them transparently.
 
             4011f04   uint32      Flags
+                                    800    Set by boot0
                                     400    Enable flag
-                                    200    Enable flag
-                                    100    Enable flag
+                                    200    Enable flag, set by boot0
+                                    100    Enable flag, set by boot0
             4011f08   uint32      Base address 1
             4011f0c   uint32      Final address 1
             4011f10   uint32      Base address 2
             4011f14   uint32      Final address 2
 
 4020000
-4020f00     Related to RAM region 2000000
+4020f00     Related to RAM region 2000000, set up during boot0
 
-4030000
-4030140
-4030f00
+            4020f04   uint32      Flags
+                                    800    Set by boot0
+
+4030000     RAM region setup
+
+            40300f4   uint32      =   1_ffff  during boot0 (SRAM size?)
+            4030f04   uint32      =        2  during boot0, then =8802 at end of boot0
+            4030f20   uint32      = 1e0_0000  during boot0
+            4030f24   uint32      = 1ff_ffff  during boot0
+            4030f40   uint32      = 200_0000  during boot0
+            4030f44   uint32      = 200_19ff  during boot0
+
 4031000     - Vector 1019c
+
+            4031000   uint32      =4000_0800  during boot0
+            4031004   uint32      =        8  during boot0
+
 4031140
 4031180
 4032040
