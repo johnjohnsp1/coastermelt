@@ -49,7 +49,8 @@ int main(int argc, char** argv)
     } else if (argc >= 3 && !strcmp("--scsi", argv[1])) {
 
         uint8_t cdb[12];
-        static uint8_t data[1024*1024];
+        const char *dumpfile = "result.log";
+        static uint8_t data[1024*1024*128];
         unsigned len = std::min<unsigned>(strtol(argv[2], 0, 16), sizeof data - 1);
 
         memset(cdb, 0, sizeof cdb);
@@ -66,6 +67,14 @@ int main(int argc, char** argv)
         if (scsi.in(cdb, sizeof cdb, data, len)) {
             fprintf(stderr, "\nData returned:\n");
             hexdump(data, len);
+
+            if (len) {
+                FILE *f = fopen(dumpfile, "wb");
+                if (f && fwrite(data, len, 1, f) == 1) {
+                    fprintf(stderr, "Saved %d bytes to %s\n", len, dumpfile);
+                    fclose(f);
+                }
+            }
         }
         return 0;
 
@@ -85,11 +94,12 @@ int main(int argc, char** argv)
             "    mtflash --scsi    Send a low level SCSI command.\n"
             "\n"
             "scsi examples:\n"
-            "    mtflash --scsi 60 12 00 00 00 60        Long inquiry command\n"
-            "    mtflash --scsi 8 ff 00 ff               Firmware version\n"
-            "    mtflash --scsi 2 ff 00 05               Read appselect bit0\n"
-            "    mtflash --scsi 0 ff 00 04 00 00 01      Set appselect bit0\n"
-            "    mtflash --scsi 0 ff 00 04 00 00 00      Clear appselect bit0\n"
+            "    mtflash --scsi 60 12 00 00 00 60                    Long inquiry command\n"
+            "    mtflash --scsi 8 ff 00 ff                           Firmware version\n"
+            "    mtflash --scsi 2 ff 00 05                           Read appselect bit0\n"
+            "    mtflash --scsi 0 ff 00 04 00 00 01                  Set appselect bit0\n"
+            "    mtflash --scsi 0 ff 00 04 00 00 00                  Clear appselect bit0\n"
+            "    mtflash --scsi 3c 02 00 00 00 00 0f ff ff 00 00 00  Buffer leak\n"
             );
         return 1;
     }

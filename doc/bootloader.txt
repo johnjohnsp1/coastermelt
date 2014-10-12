@@ -31,8 +31,31 @@ The F1 command seems to be another vendor specific undocumented thing. This
 one has a big switch tree of subcommands, including one that seems to invoke
 app firmware unconditionally?
 
-  F1 
+Read Buffer (3C) and Write Buffer (3B) are part of the spec for firmware
+updates, but TSSC clearly went their own route. Looks like these might be
+fully custom, or they might be some vestiges of official spec support that
+they decided to drop. Whatever the reason, these turn out to be super useful.
 
+ - Note: The TS00/TS01 firmware implements these commands, but they seem to
+         be very different. Only the BOOT firmware seems to give such
+         straightforward access to memory.
+
+  3c 02 00 aa aa aa ll ll ll      Read 0xllllll bytes from address 0xaaaaaa
+                                  This appears to be able to access anything
+                                  in the low 16MB of... whatever address
+                                  space this is. It would make sense for this
+                                  to be the normal ARM address space, but the
+                                  data doesn't line up.
+
+  3c 06 00 aa aa aa ll ll ll      Another read command, this time it seems to
+                                  be the ARM copying from its address space to
+                                  the DMA space. Addresses < 0x200000 return
+                                  flash, other addresses seem to crash.
+
+      (*) Bonus! It's possible to use this command to "see" through the data
+          cache, to see what values the firmware has been using recently. Just
+          after erasing the flash, you can use this command to dump memory.
+          Anything still in the cache will show up against the background of ff
 
 Notation
 --------
@@ -91,33 +114,26 @@ Initialization
 
 First known step:
 
-- ARM processor starts, PC=1000 T=0
-  Running first bootloader section (1000-13ff) 
-  
-  - SoC main reset?
+- ARM processor starts, PC=0 T=0
+  Mappings are already set up such that addresses 000:3ff map to 1000:13ff in flash.
+
+- Boot code 1000
+
+  - SoC main reset
     
     [4001000] |= 10
     [4001000] &= 10
 
-  - Set up RAM segments?
+  - Set up RAM segments
     First one is 6 kB, second one is 2 MB.
 
-    nop nop
     [4020f20] = 02000000
-    nop nop
     [4020f24] = 020019ff
-    nop nop
-
-    This register address calculated based on ram address; could be protection info?
-
     [4020f04] |= 0x800
 
-    This seems related to the RAM segment, but it's reading values from the
-    encrypted page! And they're unaligned addresses! It's probably safe to say
-    the hardware does something special with these addresses.
+    [4030f04] = 2
 
-    [4030f04] = [2]
-    [4031004] = [8]
+    [4031004] = 8
     [4031000] = 40000800
 
     Addresses calculated based on masking off 1ffff/2

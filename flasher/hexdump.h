@@ -11,7 +11,7 @@
 inline void hexdump(const uint8_t *data, unsigned length,
     unsigned bytesPerLine = 16, const char* prefix = "", FILE* dest = 0)
 {
-    dest = dest ? dest : stderr;
+    dest = dest ? dest : stdout;
 
     for (unsigned addr = 0; addr < length; addr += bytesPerLine) {
 

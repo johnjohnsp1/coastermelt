@@ -102,8 +102,7 @@ Been abbreviating this as ref[index].
    b [ 7]   = 0
    b [ 8]  Oneshot bool error flag, SCSI 0 29 6 
    b [ 9]
-   b [ a]  Transfer length
-   b [ b]
+  hf [ a]  Transfer length
 
 word [ c]  Pointer to SCSI command data block (early bootloader main loop)
 

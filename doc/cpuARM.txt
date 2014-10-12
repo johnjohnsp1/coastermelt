@@ -145,6 +145,8 @@ Very rough notes, may be wildly wrong.
 
 4030000     RAM region setup
 
+            40300e8   uint32      Mapped pointer for SCSI device-to-host transfer
+
             40300f4   uint32      =   1_ffff  during boot0 (SRAM size?)
             4030f04   uint32      =        2  during boot0, then =8802 at end of boot0
             4030f20   uint32      = 1e0_0000  during boot0
@@ -168,8 +170,8 @@ Very rough notes, may be wildly wrong.
 4040040     Related to commands (SCSI?) received via vector 10046
 4041000
 4042000     - Also SCSI here?
-4042a00
-4042e00
+
+            4042154   uint32      Size of transfer written here after pointer written to [40300e8]
 
 4050000
 
