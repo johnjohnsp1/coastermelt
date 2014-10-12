@@ -99,7 +99,7 @@ int main(int argc, char** argv)
             "    mtflash --scsi 2 ff 00 05                           Read appselect bit0\n"
             "    mtflash --scsi 0 ff 00 04 00 00 01                  Set appselect bit0\n"
             "    mtflash --scsi 0 ff 00 04 00 00 00                  Clear appselect bit0\n"
-            "    mtflash --scsi 3c 02 00 00 00 00 0f ff ff 00 00 00  Buffer leak\n"
+            "    mtflash --scsi ffff 3c 6 0 0 0 0 0 ff ff            Read first 64k of DRAM\n"
             );
         return 1;
     }
