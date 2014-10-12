@@ -1,28 +1,10 @@
 #!/usr/bin/env python
+#
+# Read or "fix" signature and checksum in MT1939 firmware image.
+# - Micah Elizabeth Scott 2014. This file is released into the public domain.
+#
 
-import struct, sys, binascii
-from Crypto.Cipher import AES
-
-
-
-def byteswap(b):
-    w = len(b)/4
-    return struct.pack('>%dI' % w, *struct.unpack('<%dI' % w, b))
-
-def cbchash(msg, key):
-    iv = chr(0)*16
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    msg = cipher.encrypt(msg)
-    return ((' %08x')*4) % struct.unpack('<IIII', msg[-16:])
-
-def cbchashswap(msg, key):
-    return '\n'.join([
-        cbchash(msg, key),
-        cbchash(byteswap(msg), key),
-        cbchash(msg, byteswap(key)), 
-        cbchash(byteswap(msg), byteswap(key)),
-    ])
-
+import struct, sys, os, random
 
 
 class Firmware:
@@ -32,9 +14,22 @@ class Firmware:
 
     def open(self, filename):
         self.data = open(filename, 'rb').read()
+        if len(self.data) != 0x200000:
+            raise ValueError("Firmware image needs to be exactly 2 MB in size");
+
+    def save(self, filename):
+        tempname = filename + '_%04d' % random.randint(0, 9999)
+        f = open(tempname, 'wb')
+        f.write(self.data)
+        f.close()
+        os.rename(tempname, filename)
 
     def peek(self, fmt, addr):
         return struct.unpack(fmt, self.data[addr:addr + struct.calcsize(fmt)])
+
+    def poke(self, fmt, addr, *arg):
+        s = struct.pack(fmt, *arg)
+        self.data = self.data[:addr] + s + self.data[addr+len(s):]
 
     def checksum_stored(self):
         return self.peek('>H', 0x1ffffe)[0]
@@ -45,44 +40,56 @@ class Firmware:
             s += ord(self.data[i])
         return s & 0xffff
 
+    def checksum_set(self, s):
+        self.poke('>H', 0x1ffffe, s)
+
     def sigtable_entry(self, index):
         return self.peek('<IIIIIII', 0x10400 + 0x1c * index)
 
+    def sigtable_clear(self):
+        self.poke('<I', 0x10400, 0xffffffff)
+
+    def fix(self):
+        self.sigtable_clear()
+        self.checksum_set(self.checksum_calculate())
+
     def info(self):
-        print '*** 16-bit checksum at 1ffffe'
-        print 'Stored = %04x' % self.checksum_stored()
-        print 'Calculated = %04x' % self.checksum_calculate()
-        print
+        print '- Key at 10ff0'
+        print (' ' + 4*' %08x') % self.peek('<IIII', 0x10ff0);
 
-        print '*** Key at 10ff0'
-        print '  %08x %08x %08x %08x' % self.peek('<IIII', 0x10ff0);
-        print
-
-        print '*** Signature table at 10400'
+        print '- Signature table at 10400'
         for i in range(16):
             flag, mem_begin, mem_end, sig0, sig1, sig2, sig3 = self.sigtable_entry(i)
             if flag == 0xFFFFFFFF:
+                if i == 0:
+                    print '  (empty)'
                 break
-            print
-            print '  %08x:%08x  signature = %08x %08x %08x %08x' % (mem_begin, mem_end, sig0, sig1, sig2, sig3)
+            print '  %08x:%08x  %08x-%08x-%08x-%08x  (%.1f kiB)' % (
+                mem_begin, mem_end, sig0, sig1, sig2, sig3, (mem_end - mem_begin + 1) / 1024.0)
 
-            segment = self.data[mem_begin:mem_end+1]
-            print '                     length = %.f kB' % (len(segment) / 1024.0)
-            print
-
-            for key in [
-                '9b684323e9d561b824a9224b42a09065',
-                '00000000000000000000000000000000',
-                'd7a3e98e5a3a2573357d324b0ccb1f53',
-                '72ddcbacf6d5e164d765c8e5193284ab',
-                '86a87e6c15d8881d2396ff005ffc8d29',
-            ]:
-                print cbchashswap(segment, binascii.a2b_hex(key))
-        print
+        print '- 16-bit checksum at 1ffffe'
+        print '  stored = %04x' % self.checksum_stored()
+        print '  calced = %04x' % self.checksum_calculate()
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 3 and sys.argv[1] == '--fix':
+        f = Firmware(sys.argv[2])
+        f.info()
+        f.fix()
+        f.save(sys.argv[2])
+        print (
+            '\n'
+            '--- Fixed it ---\n'
+            '\n'
+            'WARNING: This tool intentionally bypasses the integrity checks on the\n'
+            '         supplied firmware image. It may be easy to create an image that\n'
+            '         "bricks" your drive, making it impossible to install another image.\n'
+        )
+        f.info()
+
+    elif len(sys.argv) == 2:
         Firmware(sys.argv[1]).info()
+
     else:
-        sys.stderr.write("usage: %s <firmware.bin>\n" % sys.argv[0])
+        print 'usage: %s [--fix] <firmware.bin>' % sys.argv[0]
