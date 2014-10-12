@@ -27,6 +27,21 @@ application entry.
 1019c: Syscall handler? Takes action if R0=1. MMIO~ 4031000-4042000
 
 
+Memory Map
+----------
+
+00000000 - 001fffff      Flash (2MB)
+00000000 - 0000ffff      Write-protected boot block (64kB)
+00400000 - 00400fff      Writeable 4kB page
+                            Set up via reg [4011f08]=00400000
+                            Copy of application IVT (0x10000) written here
+                            Mirror of SRAM?
+
+1fff8000                 More SRAM
+02000000                 Main SRAM
+04000000                 Memory mapped I/O
+
+
 Memory Mapped I/O
 -----------------
 
