@@ -11,6 +11,7 @@ Hardware Memory Map
                             Set up via reg [4011f08]=00400000
                             Copy of app firmware starting at 0x10000
 
+1fff8000                 More SRAM
 02000000                 Main SRAM
 04000000                 Memory mapped I/O
 

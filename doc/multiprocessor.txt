@@ -47,5 +47,7 @@ but it might also just be a very dense instruction set or include a lot of
 random-looking literal data.
 
 Currently my bet is that this is for an onboard DSP. Might also be for the
-motor controller or laser control chips.
+motor controller or laser control chips. This MCU appears NOT to be used by
+the bootloader at all.
+
 

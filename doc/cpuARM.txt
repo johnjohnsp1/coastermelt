@@ -1,0 +1,28 @@
+============
+ARM CPU Core
+============
+
+Not yet sure what variety of ARM this is. Supports both 32-bit and 16-bit
+Thumb instructions. Seems to have some proprietary memory protection features,
+and it relies heavily on inter-processor communication with the other cores.
+
+
+Vector Table
+------------
+
+The area from 10000 - 102ff is set aside by the bootloader protocol for
+interrupt vectors. It's likely the hardware IVT relocates to 10000 prior to
+application entry.
+
+10000: reset
+10004: ARM undefined instruction
+10008: ARM software interrupt (reflect to boot sector +3C)
+1000c: ARM prefetch abort exception
+10010: ARM data abort exception 
+10014: hardware interrupt? (reflect to boot sector +158)
+1001c: fiq fast hardware interrupt
+10040: Very complex (IPC?) message handler?
+10046: SCSI command handler?
+10158: Crash handler?
+1019c: Syscall handler? Takes action if R0=1. MMIO~ 4031000-4042000
+

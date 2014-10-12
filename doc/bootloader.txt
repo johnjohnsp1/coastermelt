@@ -160,15 +160,7 @@ a1b9d358 13201959
 Vector Table
 ------------
 
-The area from 10000 - 102ff is set aside for interrupt vectors:
-
-      10000: reset
-      10004: undefined instruction
-      10008: supervisor (reflect to boot sector 3C)
-      1000c: prefetch abort exception
-      10010: data abort exception 
-      10014: hardware interrupt? (reflect to boot sector 158)
-      1001c: fiq fast hardware interrupt
+The area from 10000 - 102ff is set aside for interrupt vectors.
 
 Differences between TS00 and TS01 seem to only be related to code addresses
 changing; no validity checks in this section as far as I can tell.
@@ -214,6 +206,10 @@ that the bootloader checks before invoking the application firmware.
 Most of this is clear vendor, product, and revision info.
 A lot of it is boring.
 
+ - This version info appears to be only for image identification. It isn't
+   checksummed, and changing it doesn't result in any difference in INQURIY
+   results from the device.
+
 The last two bytes are a really dumb 16-bit checksum:
 
 def get_stored_checksum(fw):
@@ -253,8 +249,7 @@ only supports firmware uploading.
   the flashing procedure to support initial installation of the loader in th
   factory using the same binary image?
 
-- There's a 16-bit checksum at 1ffffe, covering memory from 10000 up to
-  1e2000. This is necessary but not sufficieny for the firmware to boot.
+- There's a 16-bit checksum at 1ffffe, covering memory from 10000 up to 1e2000.
 
 - Experimentally found an area that isn't validated
 
@@ -272,14 +267,40 @@ only supports firmware uploading.
                              of it is scary data tables that will probably brick
                              the device if it does boot the modified image.
 
+    1ff300 - 1ff307          Verified okay
 
-* Test mod at 1baee, *is* caught by checksum.
-  Can't make the image boot at this point solely by fixing the checksum.
-  Looking for other copies of the sum, none found yet.
-  
-  Candidates for other checksums:
 
-     10424
+So far I haven't had luck in updating the checksum at 1ffffe after changing
+the image, BUT it seems possible to modify unused space (such as at 1083c) to
+adjust the checksum of the image to match the stored one.
+
+Area at 10400 is a good candidate for additional image checksumming. Possibly
+this is checked by the bootloader; possibly it's checked by the firmware
+itself after it starts up (and the cheesy 16-bit checksum might be the only
+check used by the bootloader itself).
+
+  ROM:00010400 dword_10400     DCD 1                   ; DATA XREF: ROM:0016838A
+  ROM:00010400                                         ; sub_16841C+8
+  ROM:00010404                 DCD 0x11000
+  ROM:00010408                 DCD 0x16FFF
+  ROM:0001040C                 DCD 0x3477DBC5
+  ROM:00010410                 DCD 0xD5C4AB44
+  ROM:00010414                 DCD 0x2A69E0AC
+  ROM:00010418                 DCD 0x7ABD7E09
+  ROM:0001041C                 DCD 1
+  ROM:00010420                 DCD 0x17000
+  ROM:00010424                 DCD 0x1817FF
+  ROM:00010428                 DCD 0x114CF615
+  ROM:0001042C                 DCD 0x217A4416
+  ROM:00010430                 DCD 0x9EAC335F
+  ROM:00010434                 DCD 0x3138D3CC
+
+This seems to indicate two logically separate areas within the firmware image:
+possibly a second-stage loader, then the higher level application. The
+boundary at 17000 does correspond with a logical boundary in the allocation of
+the firmware image, and 1817ff is the very end of the 8051 firmware image
+(right before the two maybe-DSP-image blobs). Very likely that these are
+checksums! The length would be right for MD5, but it doesn't seem that simple.
 
 
 ~MeS`14
