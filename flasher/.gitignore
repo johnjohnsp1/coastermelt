@@ -1,3 +1,4 @@
 mtflash
 *.o
+*.bin
 

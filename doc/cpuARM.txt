@@ -26,3 +26,97 @@ application entry.
 10158: Crash handler?
 1019c: Syscall handler? Takes action if R0=1. MMIO~ 4031000-4042000
 
+
+Memory Mapped I/O
+-----------------
+
+This processor has a substantial zoo of memory mapped peripherals.
+Very rough notes, may be wildly wrong.
+
+4000000     Low level system control, interrupt enables
+
+4001000     Reset control
+4002000     Timer
+4002058     "App select", affects bootloader in many ways
+4003000
+4004000
+4004800
+
+4010000     8051 Co-processor
+4011000     Code memory protection/mapping related to the 8051
+
+4020000
+4020f00     Related to RAM region 2000000
+
+4030000
+4030140
+4030f00
+4031000     - Vector 1019c
+4031140
+4031180
+4032040
+4033000     - Vector 1019c
+4033100
+4033200
+4033300
+
+4040040     Related to commands (SCSI?) received via vector 10046
+4041000
+4042000     - Also SCSI here?
+4042a00
+4042e00
+
+4050000
+
+4062000
+4063000     Crypto coprocessor. Seems to have a few different modes it can operate in.
+            128-bit block size, probably AES. Used by bootloader and app firmware for
+            hashing.
+
+            4063000   uint32      Flags
+                                      1   Set before op (after 4063090:1)
+            4063004   uint8       Flags
+                                      2   Operation complete
+            4063008   uint32      Flags
+                                      4   Cleared before op
+                                      2   Cleared before op
+
+            4063010   uint128     Zero'ed before a hashing operation
+                                  Conditionally zeroed by boot2
+            4063020   uint128     Key loaded from 10ff0 by boot2
+                                  Blocks loaded from regions we're checking
+
+            4063038   uint32      Result (boot2 expected a1b9d358)
+            406303c   uint32      Result (boot2 expected 13201959)
+
+            4063084   uint32      Flags
+                                      4   Set during boot2
+            4063088   uint32      boot2 init: reg = 50 + (reg & ~70)
+            4063090   uint32      Flags
+                                      1   Set before op, after op
+
+4070200
+4070300
+4070400
+4070500
+
+4081e00
+4081f00
+4082d00
+
+40d0200
+
+4100000
+4100701
+
+41f4b00
+41f4d00
+41f4f00
+41f5c00
+41f5f00
+
+4200000
+4201000
+4204000
+420c000
+

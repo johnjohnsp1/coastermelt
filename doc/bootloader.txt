@@ -2,6 +2,30 @@
 MT1939 Bootloader
 =================
 
+SCSI Commands
+-------------
+
+Handled by the bootloader:
+
+  12 Inquiry
+  1B Start / Stop Unit
+  46 Get Configuration
+  4A Get Event Status Notification
+  5A Mode Sense (10)
+  3C Read Buffer
+  3B Write Buffer
+  F1 Undocumented
+  FF Undocumented
+
+Command FF has its opcode followed by a 16-bit subcommand. Unrecognized
+commands are ignored silently without an error response.
+
+  FF 00 01 00 00 xx    Firmware update (x=0,ff,2)
+  FF 00 04 00 00 0x    Set [4002058] bit0 to 'x' (bootloader "app select")
+  FF 00 05             Return packet '00 0x' with bit0 of [4002058]
+  FF 00 FF             Firmware version info, bootloader returns:
+                            00 06 01 01 54 53 20 00
+
 
 Notation
 --------
@@ -122,8 +146,16 @@ First known step:
   since it's a huge foresty state machine. Here's a running list of things that
   seem to matter:
 
-  - Signature at 1ff000 matches 10ff0
-  - Checksum at 1ffffe matches, over range 10000-1e0000
+   10ff0   128-bit key (big endian)
+   10400   Table of 128-bit memory segment hashes
+  1ff000   Signature matches 10ff0
+  1ffff8   16-bit value aaaa
+  1ffffe   16-bit checksum over range 10000:1e0000
+
+- Finally, if the image is good, we install it by copying 0x1000 bytes from 0x10000
+  to 400000, which seems like either an uncached mirror of RAM, or a special memory
+  region where we'd keep the application IVT. This is the same length as the encrypted
+  region, so it's possible there's a kind of specialized memory in use for that page.
 
 
 App-select Register
@@ -294,6 +326,7 @@ check used by the bootloader itself).
   ROM:0001042C                 DCD 0x217A4416
   ROM:00010430                 DCD 0x9EAC335F
   ROM:00010434                 DCD 0x3138D3CC
+                                     FFFFFFFF ....
 
 This seems to indicate two logically separate areas within the firmware image:
 possibly a second-stage loader, then the higher level application. The
@@ -301,6 +334,28 @@ boundary at 17000 does correspond with a logical boundary in the allocation of
 the firmware image, and 1817ff is the very end of the 8051 firmware image
 (right before the two maybe-DSP-image blobs). Very likely that these are
 checksums! The length would be right for MD5, but it doesn't seem that simple.
+
+Looks like the checking happens in this first image. So 11000:16fff is a kind
+of second stage loader that does these checks.
+
+Should be able to test this theory by looking at regions that are covered by
+the checksum16 but not by these validations. The checksum covers 10000-1e2000.
+The tests above made changes in the area between 10000:11000 successfully with
+this technique.
+
+ - Understanding this check will also tell us how the firmware can exit back
+   to the bootloader safely!
+
+These values appear to be calculated using a 128-bit block cypher implemented
+in hardware. Keys are loaded by the bootloader from the firmware header. TS00
+and TS01 both use the same key:
+
+  0010ff0: d7a3 e98e 5a3a 2573 357d 324b 0ccb 1f53  ....Z:%s5}2K...S
+
+This is also loaded into address 0x0000 in the ref[20] 8051 mapping area. This
+is plausibly just a lazy place to put the key during loading, so I'm not yet
+sure if the 8051 firmware actually needs it, or if that MCU even has a
+compatible crypto core.
 
 
 ~MeS`14

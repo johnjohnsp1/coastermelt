@@ -95,18 +95,20 @@ Been abbreviating this as ref[index].
    b [ 3]  Oneshot bool flag, if set send SCSI 5 24 0 "Invalid field" error and clear flag.
    b [ 4]
    b [ 5]
-   b [ 6]
+   b [ 6]  On command completion, set to 1 by ARM SCSI code
    b [ 7]   = 0
-   b [ 8]
+   b [ 8]  Oneshot bool error flag, SCSI 0 29 6 
    b [ 9]
    b [ a]  Transfer length
    b [ b]
-word [ c]  Address (ARM)
-            Bytes
-            Used by boot_main_wrap_2 ARM in bootloader
+
+word [ c]  SCSI command for early bootloader main loop
+            - Low byte is command number
+            - Whole word is used as a parameter base addr?
 
 word [10]  Address (ARM)
             1e2000
+            1ffff8
          >= 200000   Causes exit from bootloader into firmware
     
 word [14]  Residual byte count
@@ -127,6 +129,7 @@ word [20]  ARM address of mapped 8051 memory
            depend on hardware version.
 
 word [24]  Index of what I'll call the "working packet" inside the 8051 mapped area, abbreviated wp[]
+
 word [28]  SCSI command response
 word [2c]
 word [30]
