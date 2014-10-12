@@ -27,6 +27,32 @@ application entry.
 1019c: Syscall handler? Takes action if R0=1. MMIO~ 4031000-4042000
 
 
+Cryptography
+------------
+
+Annoyingly but not necessarily suprisingly, I'm hitting cryptography already
+just in trying to understand the boot process. It's likely someone thought the
+firmware should include a chain of trust for something related to video DRM or
+possibly protecting intellectual property. It's annoying, and hopefully not
+very thorough.
+
+ - Uses 128-bit blocks. It's likely AES, but I don't really know yet
+
+ - A block cipher core lives at [4063000]
+
+ - There also appears to be transparent decryption for code memory. The
+   bootloader includes one encrypted region at 000:fff, but the application
+   firmware includes many more. Unused areas at the end of these blocks
+   exhibit a characteristic repeating 16-byte pattern, which seems like the
+   transparent cipher would be using ECB mode. Every individually encrypted
+   code block seems to use a different key. The blocks in the main app are
+   prefixed with a NOP sled and an MSR instruction which enables supervisor
+   mode.
+
+   This hardware probably has a poweron default to be active for memory
+   at 000:fff, hence the encrypted IVT in the bootloader.
+
+
 Memory Map
 ----------
 
@@ -50,6 +76,9 @@ Very rough notes, may be wildly wrong.
 
 4000000     Low level system control, interrupt enables
 
+            4000000   uint32      Flags
+                                     10    Global interrupt enable?
+
 4001000     Reset control
 4002000     Timer
 4002058     "App select", affects bootloader in many ways
@@ -58,7 +87,38 @@ Very rough notes, may be wildly wrong.
 4004800
 
 4010000     8051 Co-processor
-4011000     Code memory protection/mapping related to the 8051
+            
+            4010000   uint8       Flags
+                                      1    Poll for bit=0 after logging to zr[c]
+
+4011000     Coprocessor and encryption memory mapping control
+
+            - Used while booting firmware
+
+            4011040   uint32      Flags
+                                      1    Set while booting app firmware, in bootloader
+
+            - Transparent 128-bit code decryption, possibly AES-ECB mode
+
+            4011064   uint32      Flags
+                                      4    Transparent encryption enabled
+            4011068   uint32      First address of transparent encryption region
+            401106c   uint32      Final address in transparent encryption region
+
+            - Movable memory regions
+
+            These normally live at 000:3ff and 400:fff (over the bootloader encrypted area)
+            but during app boot they temporarily move above flash so we can copy the app
+            IVT to them transparently.
+
+            4011f04   uint32      Flags
+                                    400    Enable flag
+                                    200    Enable flag
+                                    100    Enable flag
+            4011f08   uint32      Base address 1
+            4011f0c   uint32      Final address 1
+            4011f10   uint32      Base address 2
+            4011f14   uint32      Final address 2
 
 4020000
 4020f00     Related to RAM region 2000000

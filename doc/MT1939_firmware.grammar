@@ -11,7 +11,9 @@
                 <structure name="Boot8051" id="15" length="8192"/>
             </structure>
             <structure name="AppFirmware" id="18" length="1908736">
-                <structure name="padding" id="19" length="1505280"/>
+                <structure name="VectorTable" id="45" length="4096"/>
+                <structure name="encrypted_11000" id="47" length="12288"/>
+                <structure name="Text" id="19" length="1488896"/>
                 <structure name="Firmware1_8051" id="21" length="8192"/>
                 <structure name="Firmware2" id="32" length="51200"/>
                 <structure name="Firmware3" id="34" length="344064"/>
