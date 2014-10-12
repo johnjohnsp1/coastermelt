@@ -93,6 +93,9 @@ Been abbreviating this as ref[index].
    b [ 1]
    b [ 2]   = 0
    b [ 3]  Oneshot bool flag, if set send SCSI 5 24 0 "Invalid field" error and clear flag.
+             These fields must be to reduce code size. They're redundant with the other
+             SCSI error reporting fields below, but for commonly used errors it's less code
+             repetition to set this bit instead of a full SCSI error code.
    b [ 4]
    b [ 5]
    b [ 6]  On command completion, set to 1 by ARM SCSI code
@@ -102,9 +105,7 @@ Been abbreviating this as ref[index].
    b [ a]  Transfer length
    b [ b]
 
-word [ c]  SCSI command for early bootloader main loop
-            - Low byte is command number
-            - Whole word is used as a parameter base addr?
+word [ c]  Pointer to SCSI command data block (early bootloader main loop)
 
 word [10]  Address (ARM)
             1e2000

@@ -18,13 +18,20 @@ Handled by the bootloader:
   FF Undocumented
 
 Command FF has its opcode followed by a 16-bit subcommand. Unrecognized
-commands are ignored silently without an error response.
+commands are ignored silently without an error response. This is the command
+used by the official firmware updater app from TSST.
 
   FF 00 01 00 00 xx    Firmware update (x=0,ff,2)
   FF 00 04 00 00 0x    Set [4002058] bit0 to 'x' (bootloader "app select")
   FF 00 05             Return packet '00 0x' with bit0 of [4002058]
   FF 00 FF             Firmware version info, bootloader returns:
                             00 06 01 01 54 53 20 00
+
+The F1 command seems to be another vendor specific undocumented thing. This
+one has a big switch tree of subcommands, including one that seems to invoke
+app firmware unconditionally?
+
+  F1 
 
 
 Notation
