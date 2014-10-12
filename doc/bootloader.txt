@@ -2,6 +2,18 @@
 MT1939 Bootloader
 =================
 
+Notation
+--------
+
+All numbers are hexadecimal.
+
+Memory accesses are denoted as Width[Address], where Width is B, H, or (blank)
+for Byte, Halfword, or Word respectively.
+
+C-style operators "|=", "&=", etc. are shorthand for read-modify-write
+operations which require a load and store.
+
+
 SCSI Commands
 -------------
 
@@ -36,14 +48,11 @@ updates, but TSSC clearly went their own route. Looks like these might be
 fully custom, or they might be some vestiges of official spec support that
 they decided to drop. Whatever the reason, these turn out to be super useful.
 
- - Note: The TS00/TS01 firmware implements these commands, but they seem to
-         be very different. Only the BOOT firmware seems to give such
-         straightforward access to memory.
-
   3c 02 00 aa aa aa ll ll ll      Read 0xllllll bytes from address 0xaaaaaa
                                   This appears to be able to access anything
                                   in the low 16MB of... whatever address
-                                  space this is. It would make sense for this
+                                  space this is. Seems like DRAM buffer memory,
+                                  possibly also what the 8051It would make sense for this
                                   to be the normal ARM address space, but the
                                   data doesn't line up.
 
@@ -57,16 +66,14 @@ they decided to drop. Whatever the reason, these turn out to be super useful.
           after erasing the flash, you can use this command to dump memory.
           Anything still in the cache will show up against the background of ff
 
-Notation
---------
+      So far no luck in using this to read anything except flash. Can it read
+      SRAM or MMIO? 
 
-All numbers are hexadecimal.
 
-Memory accesses are denoted as Width[Address], where Width is B, H, or (blank)
-for Byte, Halfword, or Word respectively.
+  3b 01 00            Much simpler
 
-C-style operators "|=", "&=", etc. are shorthand for read-modify-write
-operations which require a load and store.
+  3b 02 00            Seem to be synonyms for the same complicated command?
+  3b 06 00              Involves a bootloader flash self-test
 
 
 Memory Map
@@ -379,6 +386,24 @@ This is also loaded into address 0x0000 in the ref[20] 8051 mapping area. This
 is plausibly just a lazy place to put the key during loading, so I'm not yet
 sure if the 8051 firmware actually needs it, or if that MCU even has a
 compatible crypto core.
+
+... much more research follows, and it seems like the MCU has an 128-bit block
+... cypher core, and there are several different parts of the boot process
+... that use it. It also seems to have a way of transparently decrypting code
+... from flash or remapping writable regions over the encrypted functions so
+... that unencrypted versions can be substituted.
+
+The most straightforward implementation of the signature verification seems to
+be in the implementation of SCSI command 3B "Write Buffer" with undocumented
+functionality that seems to include a different unused form of firmware
+updater.
+
+The crypto portions of this operation are contained nicely within a critical
+section, so it's easy to see what needs to stay together.
+
+Beginning the critical section:
+
+  
 
 
 ~MeS`14

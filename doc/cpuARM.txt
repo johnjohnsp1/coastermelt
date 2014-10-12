@@ -68,6 +68,38 @@ Memory Map
 04000000                 Memory mapped I/O
 
 
+DRAM
+----
+
+I'm not yet sure where DRAM is usually mapped in the ARM address space. It's
+usually accessed indirectly, via ref[20]. I've been referring to this space a
+lot as '8051' address space because I saw the ARM copy the 8051 firmware image
+there, but now that I've figured out how to dump it using undocumented SCSI
+command 3C02, the whole DRAM area can be examined.
+
+When dumping from the bootloader after cold boot, the characteristic noisy
+checkerboard patterns of DRAM's wiring show up in the uninitialized areas.
+
+       0 -      fff     [BOOT] uninitialized
+                        [TS01] Array with 8-byte records
+    1000 -     2fff     8051 program memory
+    3000 -   1f7fff     [BOOT] uninitialized
+
+  1f8000 -   3fffff     gobs of loosely structured data!
+                          It could be more code data here, but my hunch is
+                          that this is a ring buffer of command data
+                          structures. Many of the repeating blocks look like
+                          they could be arguments, and I feel like a
+                          sufficiently awesome tool could convert this into a
+                          log of recent transfers.
+
+All signs point to the DRAM region being 4MB in size. This is the size of the
+"cache memory" advertised for the device, and it looks like at 400000 and
+after, the same 2MB of memory mirrors over and over.
+
+Most of this memory seems to be dynamically allocated, so it often has useful
+tidbits in it but the overall structure varies wildly from run to run.
+
 Memory Mapped I/O
 -----------------
 
@@ -191,7 +223,8 @@ Very rough notes, may be wildly wrong.
             4063010   uint128     Zero'ed before a hashing operation
                                   Conditionally zeroed by boot2
             4063020   uint128     Key loaded from 10ff0 by boot2
-                                  Blocks loaded from regions we're checking
+                                  Blocks loaded from regions we're checking.
+                                  Simpler checker algo in cmd3B uses a key from 1ff000.
 
             4063038   uint32      Result (boot2 expected a1b9d358)
             406303c   uint32      Result (boot2 expected 13201959)
