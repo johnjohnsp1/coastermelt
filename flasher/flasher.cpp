@@ -20,6 +20,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <algorithm>
 #include "mt1939.h"
 
 int main(int argc, char** argv)
@@ -45,6 +46,29 @@ int main(int argc, char** argv)
     } else if (argc == 2 && !strcmp("--erase", argv[1])) {
         fw.erase();
 
+    } else if (argc >= 3 && !strcmp("--scsi", argv[1])) {
+
+        uint8_t cdb[12];
+        static uint8_t data[1024*1024];
+        unsigned len = std::min<unsigned>(strtol(argv[2], 0, 16), sizeof data - 1);
+
+        memset(cdb, 0, sizeof cdb);
+        for (int i = 0; i < sizeof cdb; i++) {
+            const char *arg = argv[3+i];
+            if (!arg) {
+                break;
+            }
+            cdb[i] = strtol(arg, 0, 16);
+        }
+
+        fprintf(stderr, "\nCDB:\n");
+        hexdump(cdb, sizeof cdb);
+        if (scsi.in(cdb, sizeof cdb, data, len)) {
+            fprintf(stderr, "\nData returned:\n");
+            hexdump(data, len);
+        }
+        return 0;
+
     } else if (argc == 2 && fw.open(argv[1])) {
         fprintf(stderr, "Firmware image loaded from disk\n");
 
@@ -52,12 +76,21 @@ int main(int argc, char** argv)
         fprintf(stderr,
             "\n"
             "usage:\n"
-            "    mtflash          Shows device version info, changes nothing\n"
-            "    mtflash fw.bin   Program a 2MB raw firmware image file.\n"
-            "                     The first 64 kiB is locked and can't be programmed,\n"
-            "                     so these bytes in the image are ignored.\n"
-            "    mtflash --erase  Send an image of all 0xFFs, erasing the unlocked\n"
-            "                     portions of flash.\n");
+            "    mtflash           Shows device version info, changes nothing\n"
+            "    mtflash fw.bin    Program a 2MB raw firmware image file.\n"
+            "                      The first 64 kiB is locked and can't be programmed,\n"
+            "                      so these bytes in the image are ignored.\n"
+            "    mtflash --erase   Send an image of all 0xFFs, erasing the unlocked\n"
+            "                      portions of flash.\n"
+            "    mtflash --scsi    Send a low level SCSI command.\n"
+            "\n"
+            "scsi examples:\n"
+            "    mtflash --scsi 60 12 00 00 00 60        Long inquiry command\n"
+            "    mtflash --scsi 8 ff 00 ff               Firmware version\n"
+            "    mtflash --scsi 2 ff 00 05               Read appselect bit0\n"
+            "    mtflash --scsi 0 ff 00 04 00 00 01      Set appselect bit0\n"
+            "    mtflash --scsi 0 ff 00 04 00 00 00      Clear appselect bit0\n"
+            );
         return 1;
     }
 
