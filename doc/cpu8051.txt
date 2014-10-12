@@ -84,7 +84,9 @@ memory regions.
 Shared Block
 ------------
 
-2000d80 - 2000e0b    
+[BOOT] 2000d80 - 2000e0b
+[TS01] 2000cec - 
+
   Seems to be shared by the 8051 and ARM processors.
 
 Been abbreviating this as ref[index].
