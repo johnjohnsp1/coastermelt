@@ -62,7 +62,7 @@ _start:
     movs    r0, #0xFF
     lsls    r0, r0, #8
     bics    r7, r0
-    mov     r0, #4
+    mov     r0, #1
     lsls    r0, r0, #8
     orrs    r0, r7
     str     r7, [r1, 0x34]
