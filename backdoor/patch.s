@@ -51,8 +51,26 @@ _start:
     mov     r0, #0
     str     r0, [r5, #4]      @ ra[4] = 0
     str     r0, [r5]          @ ra[0] = 0   (source)
+    mov     r7, #4
+    str     r7, [r5, #8]      @ ra[8] = 4   (count)
+
+    ldr     r1, proto_size
+    str     r7, [r1]
+
+    ldr     r1, mmio_regs
+    ldr     r7, [r1, 0x34]    @ Size into byte1
+    movs    r0, #0xFF
+    lsls    r0, r0, #8
+    bics    r7, r0
     mov     r0, #4
-    str     r0, [r5, #8]      @ ra[8] = 4   (count)
+    lsls    r0, r0, #8
+    orrs    r0, r7
+    str     r7, [r1, 0x34]
+
+    ldrb    r7, [r1, 5]
+    movs    r0, #0x1f
+    bics    r7, r0
+    strb    r7, [r1, 5]
 
     ldrb    r1, [r6, #2]
     lsls    r0, r1, #24
@@ -65,16 +83,13 @@ _start:
     ldrb    r1, [r6, #5]
     orrs    r0, r1            @ r0 = cdb[2,3,4,5]
 
-    ldr     r2, [r5, #8]      @ r2 = count = ra[8]
-    ldr     r0, [r5, #4]      @ r0 = DRAM dest = ra[4]
-
-    ldr     r0, [r5, #4]      @ DRAM address for DMA
-    ldr     r1, mmio_ptr
-    str     r0, [r1]
-
-    ldr     r0, [r5, #8]      @ Count for DMA
-    ldr     r1, mmio_count
-    str     r0, [r1]
+    strb    r0, [r1, 8]       @ Write bytes
+    lsrs    r0, r0, #8
+    strb    r0, [r1, 8]
+    lsrs    r0, r0, #8
+    strb    r0, [r1, 8]
+    lsrs    r0, r0, #8
+    strb    r0, [r1, 8]
 
     mov     r0, #1            @ Done flag
     ldr     r1, flag_2000ce6
@@ -89,7 +104,7 @@ ra_base:       .word   0x2000d80
 
 zr_base:       .word   0x2000d60
 
-mmio_ptr:      .word   0x40300e8
-mmio_count:    .word   0x4042154
+mmio_regs:     .word   0x40400a0
+proto_size:    .word   0x4042154
 flag_2000ce6:  .word   0x2000ce6
 

@@ -175,9 +175,10 @@ Very rough notes, may be wildly wrong.
             4020f04   uint32      Flags
                                     800    Set by boot0
 
-4030000     RAM region setup
+4030000     RAM region setup / DMA engine
 
             40300e8   uint32      Mapped pointer for SCSI device-to-host transfer
+                                  (DMA source address)
 
             40300f4   uint32      =   1_ffff  during boot0 (SRAM size?)
             4030f04   uint32      =        2  during boot0, then =8802 at end of boot0
@@ -201,9 +202,21 @@ Very rough notes, may be wildly wrong.
 
 4040040     Related to commands (SCSI?) received via vector 10046
 4041000
-4042000     - Also SCSI here?
+4042000     - SCSI response pipe
 
-            4042154   uint32      Size of transfer written here after pointer written to [40300e8]
+            40400a5   uint8       Bits 1F cleared prior to PIO transfer
+            40400a8   uint32      Byte FIFO register for PIO (non-DMA)
+                                  Used by cmd03 Request Sense and some others.
+            40400d4   uint32      Transfer length (?) in bits 15:8, when using the byte FIFO
+
+            4042154   uint32      Pre-initiation write
+                                     DMA: size, after pointer written to [40300e8]
+                                     PIO: Before other MMIO writes, &= 1
+
+                                   This one seems more protocol-related than to control
+                                   the DMA/PIO hardware. It's a weird address (a header in
+                                   a buffer somewhere) and the ordering is strange. In PIO,
+                                   this is written prior to all error handling.
 
 4050000
 
@@ -243,6 +256,8 @@ Very rough notes, may be wildly wrong.
 4081e00
 4081f00
 4082d00
+
+40b0040
 
 40d0200
 
