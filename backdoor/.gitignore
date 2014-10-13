@@ -1,10 +1,4 @@
-*.bin
-*.bin
-*.bin
-*.bin
-*.bin
-*.bin
-*.bin
+*.log
 *.bin
 patch.s
 

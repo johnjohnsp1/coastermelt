@@ -20,6 +20,9 @@ all: $(BACKDOOR_BIN)
 flash: $(BACKDOOR_BIN)
 	$(FLASHER_TOOL) $(BACKDOOR_BIN)
 
+test:
+	$(FLASHER_TOOL) --scsi 4 3c 6 0 0 0 0 0 0 4 
+
 $(BACKDOOR_BIN): $(PATCH_BIN) $(FIRMWARE_BIN)
 	cp $(FIRMWARE_BIN) $(BACKDOOR_BIN)
 	(dd if=$(FIRMWARE_BIN) bs=1 count=$(PATCH_ADDR); cat $(PATCH_BIN)) | dd of=$(BACKDOOR_BIN) conv=notrunc
@@ -40,5 +43,5 @@ $(PATCH_BIN): $(PATCH_SRC)
 clean:
 	rm -f $(FIRMWARE_BIN) patch.bin backdoor.bin
 
-.PHONY: clean all flash
+.PHONY: clean all flash test
 .DELETE_ON_ERROR:
