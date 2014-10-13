@@ -1,3 +1,4 @@
+@
 @ Binary backdoor for MT1939 firmware.  ONLY for version TS01.
 @
 @ Install at 0xCABB8, must be no longer than 0xCAD74.
@@ -14,70 +15,81 @@
 @ already lives in SRAM for some reason. No need for a separate branch
 @ command.
 @
-@ Micah Elizabeth Scott, 2014
-@ This file is released into the public domain.
+@ Copyright (c) 2014 Micah Elizabeth Scott
+@ 
+@   Permission is hereby granted, free of charge, to any person obtaining a copy of
+@   this software and associated documentation files (the "Software"), to deal in
+@   the Software without restriction, including without limitation the rights to
+@   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+@   the Software, and to permit persons to whom the Software is furnished to do so,
+@   subject to the following conditions:
+@   
+@   The above copyright notice and this permission notice shall be included in all
+@   copies or substantial portions of the Software.
+@   
+@   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+@   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+@   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+@   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+@   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+@   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+@
 
 	.text
     .syntax unified
     .thumb
+    .global _start
+
 _start:
 
     push    {r3-r7, lr}
-
-    ldr     r4, ref_base
-    add     r4, #0xc          @ r4 = ref[c]
-    ldr     r6, [r4]          @ r6 = SCSI CDB
-    
-    ldr     r12, func_1       @ Prepare for response
-    blx     r12
+ 
+    ldr     r4, ref_base      @ r4 = ref  (SCSI metadata)
+    ldr     r5, ra_base       @ r5 = ra   (More SCSI metadata)
+    ldr     r6, [r4, #0xc]    @ r6 = cdb  (SCSI command)
 
     mov     r0, #0
-    str     r0, [r4, #4]      @ ref[4] = 0
+    str     r0, [r5, #4]      @ ra[4] = 0
+    str     r0, [r5]          @ ra[0] = 0   (source)
+    mov     r0, #4
+    str     r0, [r5, #8]      @ ra[8] = 4   (count)
 
-    ldrb    r0, [r6, #3]
-    lsls    r0, #16
+    ldrb    r1, [r6, #2]
+    lsls    r0, r1, #24
+    ldrb    r1, [r6, #3]
+    lsls    r1, r1, #16
+    orrs    r0, r1
     ldrb    r1, [r6, #4]
-    lsls    r1, #8
+    lsls    r1, r1, #8
     orrs    r0, r1
     ldrb    r1, [r6, #5]
-    orrs    r0, r1
-    str     r0, [r4]          @ ref[0] = cdb[3,4,5]
+    orrs    r0, r1            @ r0 = cdb[2,3,4,5]
 
-    ldrb    r0, [r6, #6]
-    lsls    r0, #16
-    ldrb    r1, [r6, #7]
-    lsls    r1, #8
-    orrs    r0, r1
-    ldrb    r1, [r6, #8]
-    orrs    r0, r1
-    str     r0, [r4, #8]      @ ref[8] = cdb[6,7,8]
+    ldr     r2, [r5, #8]      @ r2 = count = ra[8]
+    ldr     r0, [r5, #4]      @ r0 = DRAM dest = ra[4]
 
-    mov     r2, r0            @ R2 = count = ref[8]
-    ldr     r1, [r4]          @ R1 = ARM source = ref[0]
-    ldr     r0, [r4, #4]      @ R0 = DRAM dest = ref[4]
-
-    ldr     r12, func_2       @ Copy to DRAM
-    blx     r12
-
-    ldr     r0, [r4, #4]      @ DRAM address for DMA
+    ldr     r0, [r5, #4]      @ DRAM address for DMA
     ldr     r1, mmio_ptr
     str     r0, [r1]
 
-    ldr     r0, [r4, #8]      @ Count for DMA
+    ldr     r0, [r5, #8]      @ Count for DMA
     ldr     r1, mmio_count
     str     r0, [r1]
 
     mov     r0, #1            @ Done flag
-    mov     r1, flag_2000ce6
-    str     r1, [r0]
-
+    ldr     r1, flag_2000ce6
+    strb    r0, [r1]
+ 
     pop     {r3-r7, pc}
 
-               .hword  0
-ref_base:      .word   0x2000d80
+    .align 2
+
+ref_base:      .word   0x2000cec
+ra_base:       .word   0x2000d80
+
+zr_base:       .word   0x2000d60
+
 mmio_ptr:      .word   0x40300e8
 mmio_count:    .word   0x4042154
 flag_2000ce6:  .word   0x2000ce6
-func_1:        .word     0x19654
-func_2:        .word     0x1a668
 

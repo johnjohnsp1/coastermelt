@@ -106,7 +106,7 @@ int main(int argc, char** argv)
 
     fw.print();
 
-    unsigned delay = 5;
+    unsigned delay = 2;
     fprintf(stderr, "--- WRITING in %d seconds ---\n", delay);
     sleep(delay);
 
