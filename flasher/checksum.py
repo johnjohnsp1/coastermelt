@@ -35,11 +35,8 @@ class Firmware:
         return self.peek('>H', 0x1ffffe)[0]
 
     def checksum_calculate(self):
-        s = 0
-        for i in range(0x10000, 0x1e2000):
-            s += ord(self.data[i])
-        return s & 0xffff
-
+        return 0xffff & sum(bytearray(self.data[0x10000:0x1e2000]))
+    
     def checksum_set(self, s):
         self.poke('>H', 0x1ffffe, s)
 
