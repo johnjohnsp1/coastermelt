@@ -3,7 +3,7 @@ FIRMWARE_BIN := SE-506CB_TS01.bin
 FIRMWARE_URL := "http://www.tsstodd.com/TotalLib/popup/Download.asp?path=fwdownload&lang=eng&fname=SE-506CB_TS01.exe"
 FIRMWARE_SUM := sums.txt
 
-PATCH_ADDR := 0xCABB8
+PATCH_ADDR := 0xC9600
 PATCH_BIN := patch.bin
 PATCH_SRC := patch.s
 BACKDOOR_BIN := backdoor.bin
@@ -15,13 +15,13 @@ OBJCOPY_ARM := arm-none-eabi-objcopy
 OBJDUMP_ARM := arm-none-eabi-objdump
 
 all: $(BACKDOOR_BIN)
-	$(OBJDUMP_ARM) -D -b binary -m arm7tdmi -M force-thumb --start-address=$(PATCH_ADDR) $< | head -n 100
+	$(OBJDUMP_ARM) -D -b binary -m arm7tdmi -M force-thumb --start-address=$(PATCH_ADDR) $< | head -n 200
 
 flash: $(BACKDOOR_BIN)
 	$(FLASHER_TOOL) $(BACKDOOR_BIN)
 
 test:
-	$(FLASHER_TOOL) --scsi 4 3c 6 0 0 0 0 0 0 4 
+	$(FLASHER_TOOL) --scsi 10 ac
 
 $(BACKDOOR_BIN): $(PATCH_BIN) $(FIRMWARE_BIN)
 	cp $(FIRMWARE_BIN) $(BACKDOOR_BIN)

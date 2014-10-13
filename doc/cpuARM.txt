@@ -207,8 +207,8 @@ Very rough notes, may be wildly wrong.
             40400a5   uint8       Bits 1F cleared prior to PIO transfer
             40400a8   uint32      Byte FIFO register for PIO (non-DMA)
                                   Used by cmd03 Request Sense and some others.
-            40400d4   uint32      Transfer length (?) in bits 15:8, when using the byte FIFO
-
+            40400d4   uint32      Byte in bits 15:8, set prior to transfer. PIO: 0x01__
+            
             4042154   uint32      Pre-initiation write
                                      DMA: size, after pointer written to [40300e8]
                                      PIO: Before other MMIO writes, &= 1
