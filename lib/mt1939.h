@@ -69,10 +69,10 @@ public:
     static bool readFirmwareVersionInfo(TinySCSI &scsi, FirmwareVersionInfo* data);
     static bool extendedInquiry(TinySCSI &scsi, ExtendedInquiryData* data);
     static bool writeFirmware(TinySCSI &scsi, FirmwareWriteState state, uint8_t* data, unsigned dataLen);
+    static bool backdoorSignature(TinySCSI &scsi, BackdoorSignature* data);
 
     // Higher level operations
     static bool deviceInfo(TinySCSI &scsi, DeviceInfo* data);
-    static bool backdoorSignature(TinySCSI &scsi, BackdoorSignature* data);
     static bool writeFirmware(TinySCSI &scsi, FirmwareImage* data);
     static bool reset(TinySCSI &scsi);
 };
