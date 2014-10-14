@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import remote, sys, struct, time
 
-#
-# Dumper utility using the peek command. Super slow!
-#
+# Use on the command line to interactively dump regions of memory.
+# Or import as a library for higher level dumping functions.
 
-def block_read(d, address, size):
+
+def read_block(d, address, size):
     parts = []
     size &= ~3
     i = 0
@@ -35,7 +35,7 @@ def hexdump(src, length=16, address=0):
     return ''.join(lines)
 
 def command(d, address, size, log_file = 'result.log'):
-    data = block_read(d, address, size)
+    data = read_block(d, address, size)
     if log_file:
         open(log_file, 'wb').write(data)
     sys.stdout.write(hexdump(data, 16, address))
