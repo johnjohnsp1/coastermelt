@@ -5,7 +5,7 @@
 # 32-bit address space. We can fit this in a 4096x4096 image. Maybe some neat
 # patterns emerge. It's kinda slow! Maybe it will crash!
 
-__all__ = ['categorize_block', 'hilbert_curve', 'categorize_block_array', 'memsquare']
+__all__ = ['categorize_block', 'categorize_block_array', 'memsquare']
 
 from dump import *
 from math import log
