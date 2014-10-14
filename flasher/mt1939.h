@@ -66,6 +66,7 @@ public:
 
     // Higher level operations
     static bool deviceInfo(TinySCSI &scsi, DeviceInfo* data);
+    static bool backdoorInfo(TinySCSI &scsi);
     static bool writeFirmware(TinySCSI &scsi, FirmwareImage* data);
     static bool reset(TinySCSI &scsi);
 };
@@ -93,17 +94,9 @@ inline bool MT1939::extendedInquiry(TinySCSI &scsi, ExtendedInquiryData* data)
 
 inline bool MT1939::deviceInfo(TinySCSI &scsi, DeviceInfo* data)
 {
-    // A hunch... try out Request Sense. I think the firmware may be capable of leaking data
-    // via this command.  See 0x219E in the bootloader ARM image.
-
-    uint8_t b[0x24];
-    uint8_t cdb[] = {0x03, 0x00, 0x00, 0x00, sizeof b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    if (scsi.in(cdb, sizeof cdb, b, sizeof b)) {
-        fprintf(stderr, "Request Sense experiment:\n");
-        hexdump(b, sizeof b);
-    }
-
-    return extendedInquiry(scsi, &data->inquiry) && readFirmwareVersionInfo(scsi, &data->firmware);
+    return backdoorInfo(scsi) &&
+           extendedInquiry(scsi, &data->inquiry) &&
+           readFirmwareVersionInfo(scsi, &data->firmware);
 }
 
 inline bool MT1939::writeFirmware(TinySCSI &scsi, FirmwareWriteState state, uint8_t* data, unsigned dataLen)
@@ -169,6 +162,21 @@ inline bool MT1939::reset(TinySCSI &scsi)
 
     fprintf(stderr, "[MT1939] Couldn't reopen after USB reset :(\n");
     return false;
+}
+
+inline bool MT1939::backdoorInfo(TinySCSI &scsi)
+{
+    // If we've installed a patched firmware, command 0xAC will return a signature
+
+    uint8_t sig[12];
+    uint8_t cdb[12] = {0xac, 0};
+
+    if (scsi.in(cdb, sizeof cdb, sig, sizeof sig)) {
+        fprintf(stderr, "Backdoor signature:\n");
+        hexdump(sig, sizeof sig);
+    }
+
+    return true;
 }
 
 inline bool MT1939::FirmwareImage::open(const char *filename)
