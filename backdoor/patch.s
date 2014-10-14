@@ -2,7 +2,6 @@
 @ Binary backdoor for MT1939 firmware.  ONLY for version TS01.
 @
 @ Installs at 0xC9600, over the SCSI command AC (Get Performance Data) handler.
-@ This area has room for up to 1936 bytes of patch code and data. So generous!
 @
 @ This replaces a relatively obscure SCSI command with a backdoor we can use to
 @ peek and poke ARM memory. Unlike the Read Buffer (3C) command which is _almost_
@@ -16,11 +15,9 @@
 @   ac 65 65 6b [address]                   peek
 @   ac 6f 6b 65 [address] [data]            poke
 @
-@ Commands return a 16-byte packet, as three little endian 32-bit words:
+@ Commands return an 8-byte packet:
 @
-@   [command echo]  [address]  [data]  [status]
-@
-@ In the patch, these uniform 16-byte structures are stured in r4-r7.
+@   [address]  [data]
 @
 @ Copyright (c) 2014 Micah Elizabeth Scott
 @ 
@@ -49,65 +46,13 @@
 
 _start:
 
-    push    {r4-r7, lr}
+    push    {lr}
 
-    @ Load 12 bytes of args from the CDB {r4-r6}, in little endian order
-
-    ldr     r0, =0x2000cf8      @ SCSI shared metadata block in RAM
-    ldr     r0, [r0, #0]        @ Pointer to SCSI CDB structure
-
-    ldr     r4, [r0, #0]        @ Not aligned enough to use LDM sadly
-    ldr     r5, [r0, #4]
-    ldr     r6, [r0, #8]
-    movs    r7, #0
-
-@    ldr     r0, =0x6b6565ac
-@    cmp     r0, r4
-@    beq     cmd_peek
-
-@    ldr     r0, =0x656b6fac
-@    cmp     r0, r4
-@    beq     cmd_poke
-
-   ldr     r5, [r4]
- 
-@cmd_unknown:
-@    mov     r4, r7
-@    mov     r5, r7
-@    mov     r6, r7
-@    b       cmd_complete
-@
-@cmd_peek:
-@    ldr     r5, [r4]
-@    b       cmd_complete
-@
-@cmd_poke:
-@    str     r5, [r4]
-@    b       cmd_complete
-
-
-    @ Write back a 128-bit structure {r4-r7} as a SCSI response
-cmd_complete:
-
-    mov     r0, #16
-    bl      fifo_begin_with_length
-
-    mov     r0, r4
-    bl      fifo_write32
-    mov     r0, r5
-    bl      fifo_write32
-    mov     r0, r6
-    bl      fifo_write32
-    mov     r0, r7
-    bl      fifo_write32
-
-    bl      fifo_done
-    pop     {r4-r7, pc}
-
-    @ Start a FIFO transfer (without DMA) of at most r0 bytes.
+    @ Start a FIFO transfer (without DMA) of at most 8 bytes.
     @ Writes to bits 15:8 in [40400e0]
 
-fifo_begin_with_length:
+    mov     r0, #8
+
     ldr     r2, =0x40400c0
     ldr     r1, [r2, #20]
     movs    r3, #0xff
@@ -116,29 +61,104 @@ fifo_begin_with_length:
     lsls    r0, r0, #8
     orrs    r1, r0
     str     r1, [r2, #20]
+
+    @ Read command information from SCSI CDB. Normally we would do this before
+    @ committing to send back a response, but this makes the patch easier to
+    @ debug. If we dont find a command, instead of sending back a SCSI error
+    @ just send back a signature that lets folks know the patch is working.
+
+    ldr     r0, =0x2000cf8      @ SCSI shared metadata block in RAM
+    ldr     r1, [r0, #0]        @ Pointer to SCSI CDB structure
+    bl      unaligned_read32
+
+    ldr     r2, =0x6b6565ac     @ Peek
+    subs    r0, r2
+
+    beq     cmd_peek
+
+@    ldr     r2, =0x656b6fac     @ Poke
+@    subs    r0, r2  
+@    beq     cmd_poke
+
+  @mov r0,r2
+  bl fifo_write32
+
+    ldr     r0, signature+0x0   @ No command recognized, send back signature
+    bl      fifo_write32
+    ldr     r0, signature+0x4
+    bl      fifo_write32
+    ldr     r0, signature+0x8
+    bl      fifo_write32
+
+complete:
+    ldr     r1, =0x2000ce6      @ Finish the FIFO response
+    movs    r0, #1
+    strb    r0, [r1]
+    pop     {pc}                @ Return from patched handler
+
+
+    @ Peek(address) -> (address, data)
+
+cmd_peek:
+    bl      unaligned_read32    @ Next word from CDB pointer in r1
+    mov     r3, r0
+    bl      fifo_write32        @ Echo address back
+    ldr     r0, [r3] 
+    bl      fifo_write32
+    b       complete
+
+
+    @ Poke(address, data) -> (address, data)
+
+cmd_poke:
+    bl      unaligned_read32
+    mov     r3, r0
+    bl      fifo_write32        @ Echo address
+    bl      unaligned_read32
+    str     r0, [r3]
+    bl      fifo_write32        @ Echo data after write
+    b       complete
+
+
+    @ Read a 32-bit number at [r1] one byte at a time, incrementing as we go.
+    @ Little endian. For data that might not be aligned.
+    @ Pointer in r1, trashes r2, result in r0.
+
+unaligned_read32:
+    ldrb    r0, [r1]
+    ldrb    r2, [r1, 1]
+    lsls    r2, r2, #8
+    orrs    r0, r2
+    ldrb    r2, [r1, 2]
+    lsls    r2, r2, #16
+    orrs    r0, r2
+    ldrb    r2, [r1, 3]
+    lsls    r2, r2, #24
+    orrs    r0, r2
+    adds    r1, #4
     bx      lr
 
     @ Write a 32-bit number to the response FIFO, one byte at a time, in
     @ little endian order. This uses the byte wide PIO FIFO, instead of using
     @ the DMA engine. DMA is great if our data is in DRAM, but for this to be
-    @ a good backdoor it should have an ARM's eye view.
+    @ a good backdoor it should have an ARM eye view.
+    @ Arg in r0, trashes r2.
 
 fifo_write32:
-    ldr     r1, =0x40400a8
-    strb    r0, [r1]
+    ldr     r2, =0x40400a8
+    strb    r0, [r2]
     lsrs    r0, #8
-    strb    r0, [r1]
+    strb    r0, [r2]
     lsrs    r0, #8
-    strb    r0, [r1]
+    strb    r0, [r2]
     lsrs    r0, #8
-    strb    r0, [r1]
+    strb    r0, [r2]
     bx      lr
 
-    @ Finish with a FIFO response
+    @ Something to know us by
 
-fifo_done:
-    ldr     r1, =0x2000ce6
-    movs    r0, #1
-    strb    r0, [r1]
-    bx      lr
-
+    .pool
+    .align 4
+signature:
+    .ascii "~MeS`14 v.01"
+    .word  -1
