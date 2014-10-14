@@ -31,7 +31,7 @@ all: $(BACKDOOR_BIN) $(REMOTE_PYLIB)
 # FLASH THE MODIFIED FIRMWARE
 # This is a super crazy thing to do, could brick your device, you've been warned!
 flash: $(FLASHER_TOOL) $(BACKDOOR_BIN)
-	$(FLASHER_TOOL) (BACKDOOR_BIN)
+	$(FLASHER_TOOL) $(BACKDOOR_BIN)
 
 # Disassemble a chunk of code around the patched location in the firmware
 disassemble: $(BACKDOOR_BIN) $(PATCH_BIN)
