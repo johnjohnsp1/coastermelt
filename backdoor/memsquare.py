@@ -39,9 +39,9 @@ def categorize_block(d, address, size):
         prev = b
 
     return [
-        red & 0xFF,         # Red and green are ready for PNG time
-        green & 0xFF,
-        t2 - t1             # Blue is in floating point seconds. We post-process below.
+        min(0xFF, max(0, int(red / len(head)))),   # Divide by total to finish calculating the mean
+        green & 0xFF,                              # Modulo diff from above
+        t2 - t1                                    # Blue is in floating point seconds. We post-process below.
     ]
 
 def categorize_block_array(d, base_address = 0, blocksize = 0x100, pixelsize = 4096):
@@ -99,8 +99,8 @@ def categorize_block_array(d, base_address = 0, blocksize = 0x100, pixelsize = 4
     print 'Done scaling'
     return a
 
-def memsquare(d, filename = 'memsquare.png', pixelsize = 4096):
-    b = categorize_block_array(d)
+def memsquare(d, filename = 'memsquare.png', base_address = 0, blocksize = 0x100, pixelsize = 4096):
+    b = categorize_block_array(d, base_address, blocksize, pixelsize)
     w = png.Writer(len(b[0])/3, len(b))
     f = open(filename, 'wb')
     w.write(f, b)
