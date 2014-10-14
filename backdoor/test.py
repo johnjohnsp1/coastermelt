@@ -35,3 +35,5 @@ assert d.blx(0x102b8, 0x00112233)[0] == 0x00112233
 # Now try the same test in Thumb mode
 assert d.blx(0x145585, 0x55aa5283)[0] == 0x55aa5283
 assert d.blx(0x145585, 0x00112233)[0] == 0x00112233
+
+print "Looks good!"
