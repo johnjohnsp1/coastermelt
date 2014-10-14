@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from struct import pack, unpack
 from binascii import a2b_hex, b2a_hex
-import random, struct, remote
+import random, struct, remote, hilbert
 d = remote.Device()
 
 # Working our way up to "Hello World"!
@@ -46,5 +46,8 @@ assert len(block) == L * 4
 words = struct.unpack('<29I', block)
 for i in range(L):
 	assert pattern[i] == words[i]
+
+# Hilbert self-test
+hilbert.test()
 
 print "Looks good!"

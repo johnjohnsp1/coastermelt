@@ -4,6 +4,8 @@ import remote, sys, struct, time
 # Use on the command line to interactively dump regions of memory.
 # Or import as a library for higher level dumping functions.
 
+__all__ = ['read_block', 'hexdump', 'dump']
+
 
 def read_block(d, address, size):
     parts = []
@@ -34,7 +36,7 @@ def hexdump(src, length=16, address=0):
         lines.append("%08x  %-*s  %s\n" % (address + c, length*3, hex, printable))
     return ''.join(lines)
 
-def command(d, address, size, log_file = 'result.log'):
+def dump(d, address, size, log_file = 'result.log'):
     data = read_block(d, address, size)
     if log_file:
         open(log_file, 'wb').write(data)
@@ -45,6 +47,6 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         print "usage: %s address size" % sys.argv[0]
         sys.exit(1)
-    command(remote.Device(),
+    dump(remote.Device(),
         int(sys.argv[1].replace('_',''), 16), 
         int(sys.argv[2].replace('_',''), 16))
