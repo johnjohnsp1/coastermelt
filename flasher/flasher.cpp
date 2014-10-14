@@ -36,15 +36,26 @@ int main(int argc, char** argv)
     if (!MT1939::deviceInfo(scsi, &info)) {
         return 1;
     }
-    info.print();
 
     // Various usage formats...
 
     if (argc == 1) {
-        return 0;
+
+        info.print();
+        MT1939::backdoorInfo(scsi);
 
     } else if (argc == 2 && !strcmp("--erase", argv[1])) {
+
+        // It's important that "--erase" skip the backdoor info, in case the
+        // backdoor patch is crashing.
+
+        info.print();
         fw.erase();
+        fw.print();
+
+        if (!MT1939::writeFirmware(scsi, &fw)) {
+            return 1;
+        }
 
     } else if (argc >= 3 && !strcmp("--scsi", argv[1])) {
 
@@ -64,22 +75,33 @@ int main(int argc, char** argv)
 
         fprintf(stderr, "\nCDB:\n");
         hexdump(cdb, sizeof cdb);
-        if (scsi.in(cdb, sizeof cdb, data, len)) {
-            fprintf(stderr, "\nData returned:\n");
-            hexdump(data, len);
 
-            if (len) {
-                FILE *f = fopen(dumpfile, "wb");
-                if (f && fwrite(data, len, 1, f) == 1) {
-                    fprintf(stderr, "Saved %d bytes to %s\n", len, dumpfile);
-                    fclose(f);
-                }
+        if (scsi.in(cdb, sizeof cdb, data, len) && len) {
+            FILE *f = fopen(dumpfile, "wb");
+            if (f && fwrite(data, len, 1, f) == 1) {
+                fprintf(stderr, "Result, %d bytes (saved to %s)\n", len, dumpfile);
+                fclose(f);
+            } else {
+                perror("Problem saving result to disk");
             }
-        }
-        return 0;
+
+            hexdump(data, len);
+        }  
 
     } else if (argc == 2 && fw.open(argv[1])) {
+
+        info.print();
+        MT1939::backdoorInfo(scsi);
+
         fprintf(stderr, "Firmware image loaded from disk\n");
+        fw.print();
+
+        if (!MT1939::writeFirmware(scsi, &fw)) {
+            return 1;
+        }
+
+        info.print();
+        MT1939::backdoorInfo(scsi);
 
     } else {
         fprintf(stderr,
@@ -101,12 +123,6 @@ int main(int argc, char** argv)
             "    mtflash --scsi 0 ff 00 04 00 00 00                  Clear appselect bit0\n"
             "    mtflash --scsi ffff 3c 6 0 0 0 0 0 ff ff            Read first 64k of DRAM\n"
             );
-        return 1;
-    }
-
-    fw.print();
-
-    if (!MT1939::writeFirmware(scsi, &fw)) {
         return 1;
     }
 

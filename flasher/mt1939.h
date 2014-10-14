@@ -94,8 +94,7 @@ inline bool MT1939::extendedInquiry(TinySCSI &scsi, ExtendedInquiryData* data)
 
 inline bool MT1939::deviceInfo(TinySCSI &scsi, DeviceInfo* data)
 {
-    return backdoorInfo(scsi) &&
-           extendedInquiry(scsi, &data->inquiry) &&
+    return extendedInquiry(scsi, &data->inquiry) &&
            readFirmwareVersionInfo(scsi, &data->firmware);
 }
 
@@ -166,13 +165,16 @@ inline bool MT1939::reset(TinySCSI &scsi)
 
 inline bool MT1939::backdoorInfo(TinySCSI &scsi)
 {
-    // If we've installed a patched firmware, command 0xAC will return a signature
+    // If we've installed a patched firmware, command 0xAC will return a signature.
+    // NOTE that if our backdoor patch is crashing, this could crash. It needs
+    // to be possible to bypass this step. We can do that by going back to the
+    // bootloader with the --erase command line option.
 
     uint8_t sig[12];
     uint8_t cdb[12] = {0xac, 0};
 
+    fprintf(stderr, "Backdoor signature:\n");
     if (scsi.in(cdb, sizeof cdb, sig, sizeof sig)) {
-        fprintf(stderr, "Backdoor signature:\n");
         hexdump(sig, sizeof sig);
     }
 
