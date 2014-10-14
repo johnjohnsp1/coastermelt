@@ -1,7 +1,8 @@
 @
-@ Binary backdoor for MT1939 firmware.  ONLY for version TS01.
+@ Binary backdoor for MT1939 optical drive firmware.
 @
 @ Installs at 0xC9600, over the SCSI command AC (Get Performance Data) handler.
+@ ONLY for firmware version TS01.
 @
 @ This replaces a relatively obscure SCSI command with a backdoor we can use to
 @ peek and poke ARM memory. Unlike the Read Buffer (3C) command which is _almost_
@@ -10,14 +11,14 @@
 @ on individual 32-bit words from the ARM side. We start the hack job with a command
 @ that already uses the PIO mode instead of DMA mode for its response.
 @
-@ New commands:
+@ Commands:
 @
-@   ac 65 65 6b [address]                   peek
-@   ac 6f 6b 65 [address] [data]            poke
-@
-@ Commands return an 8-byte packet:
-@
-@   [address]  [data]
+@   Default     ac xx                                  --> [string, 12 bytes]
+@   Peek        ac 65 65 6b [address/LE32]             --> [address/LE32] [data/LE32]
+@   Poke        ac 6f 6b 65 [address/LE32] [data/LE32] --> [address/LE32] [data/LE32]
+@   Peek byte   ac 65 65 42 [address/LE32]             --> [address/LE32] [data/LE32]
+@   Poke byte   ac 6f 6b 42 [address/LE32] [data/LE32] --> [address/LE32] [data/LE32]
+@   BLX         ac 42 4c 58 [address/LE32] [r0/LE32]   --> [r0/LE32] [r1/LE32]
 @
 @ Copyright (c) 2014 Micah Elizabeth Scott
 @ 
@@ -48,8 +49,9 @@ _start:
 
     push    {lr}
 
-    @ Start a FIFO transfer (without DMA) of at most 8 bytes.
-    @ Writes to bits 15:8 in [40400e0]
+    @ Start a FIFO transfer (without DMA), claim that the length is 8
+    @ bytes. I think this length is a minimum? Not sure how it is validated
+    @ if at all.  Writes to bits 15:8 in [40400e0]
 
     mov     r0, #8
 
@@ -72,23 +74,29 @@ _start:
     bl      unaligned_read32
 
     ldr     r2, =0x6b6565ac     @ Peek
-    subs    r0, r2
-    cmp     r0, #0
-@    b       haxx
+    cmp     r0, r2
+    beq.n   cmd_peek
 
-@    ldr     r2, =0x656b6fac     @ Poke
-@    subs    r0, r2  
-@    beq     cmd_poke
+    ldr     r2, =0x656b6fac     @ Poke
+    cmp     r0, r2  
+    beq.n   cmd_poke
 
-  @mov r0,r2
-  bl fifo_write32
+    ldr     r2, =0x584c42ac     @ BLX
+    cmp     r0, r2  
+    beq.n   cmd_blx
+
+    ldr     r2, =0x426565ac     @ Peek byte
+    cmp     r0, r2
+    beq.n   cmd_peek_byte
+
+    ldr     r2, =0x426b6fac     @ Poke byte
+    cmp     r0, r2  
+    beq.n   cmd_poke_byte
 
     ldr     r0, signature+0x0   @ No command recognized, send back signature
     bl      fifo_write32
     ldr     r0, signature+0x4
     bl      fifo_write32
-
-haxx:
     ldr     r0, signature+0x8
     bl      fifo_write32
 
@@ -107,7 +115,7 @@ cmd_peek:
     bl      fifo_write32        @ Echo address back
     ldr     r0, [r3] 
     bl      fifo_write32
-    b       complete
+    b.n     complete
 
 
     @ Poke(address, data) -> (address, data)
@@ -119,7 +127,43 @@ cmd_poke:
     bl      unaligned_read32
     str     r0, [r3]
     bl      fifo_write32        @ Echo data after write
-    b       complete
+    b.n     complete
+
+
+    @ BLX(address, arg0) -> (result0, result1)
+
+cmd_blx:
+    bl      unaligned_read32
+    mov     r3, r0
+    bl      unaligned_read32
+    blx     r3
+    bl      fifo_write32
+    mov     r0, r1
+    bl      fifo_write32
+    b.n     complete        
+
+
+    @ PeekByte(address) -> (address, data)
+
+cmd_peek_byte:
+    bl      unaligned_read32    @ Next word from CDB pointer in r1
+    mov     r3, r0
+    bl      fifo_write32        @ Echo address back
+    ldrb    r0, [r3] 
+    bl      fifo_write32
+    b.n     complete
+
+
+    @ PokeByte(address, data) -> (address, data)
+
+cmd_poke_byte:
+    bl      unaligned_read32
+    mov     r3, r0
+    bl      fifo_write32        @ Echo address
+    bl      unaligned_read32
+    strb    r0, [r3]
+    bl      fifo_write32        @ Echo data after write
+    b.n     complete
 
 
     @ Read a 32-bit number at [r1] one byte at a time, incrementing as we go.
@@ -162,5 +206,5 @@ fifo_write32:
     .pool
     .align 4
 signature:
-    .ascii "~MeS`14 v.01"
-    .word  -1
+    .ascii "~MeS`14 "
+    .ascii "v.01    "

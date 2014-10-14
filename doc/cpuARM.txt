@@ -6,6 +6,9 @@ Not yet sure what variety of ARM this is. Supports both 32-bit and 16-bit
 Thumb instructions. Seems to have some proprietary memory protection features,
 and it relies heavily on inter-processor communication with the other cores.
 
+ - Looks like it does NOT support the full Thumb-2 instruction set.
+   Not sure which subset it supports yet.
+
 
 Vector Table
 ------------
