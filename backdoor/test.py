@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from struct import pack, unpack
 from binascii import a2b_hex, b2a_hex
-import remote
+import random, struct, remote
 d = remote.Device()
 
 # Working our way up to "Hello World"!
@@ -35,5 +35,16 @@ assert d.blx(0x102b8, 0x00112233)[0] == 0x00112233
 # Now try the same test in Thumb mode
 assert d.blx(0x145585, 0x55aa5283)[0] == 0x55aa5283
 assert d.blx(0x145585, 0x00112233)[0] == 0x00112233
+
+# Test the RAM block read. It seems to work with up to 0x1D words
+L = 0x1d
+pattern = [random.randint(0, 0xffffffff) for i in range(L)]
+for i in range(L):
+ 	d.poke(pad + (i*4), pattern[i])
+block = d.read_block(pad, L)
+assert len(block) == L * 4
+words = struct.unpack('<29I', block)
+for i in range(L):
+	assert pattern[i] == words[i]
 
 print "Looks good!"

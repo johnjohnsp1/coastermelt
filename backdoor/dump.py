@@ -12,15 +12,16 @@ def block_read(d, address, size):
     timestamp = time.time()
 
     while i < size:
-        parts.append(d.peek(address + i))
-        i += 4
+        wordcount = min((size - i) / 4, 0x1c)
+        parts.append(d.read_block(address + i, wordcount))
+        i += 4 * wordcount
 
         now = time.time()
         if now > timestamp + 0.2:
             print "%d / %d bytes read" % (i, size)
             timestamp = now
 
-    return struct.pack('<%dI' % len(parts), *parts)
+    return ''.join(parts)
 
 # Based on https://gist.github.com/sbz/1080258
 def hexdump(src, length=16, address=0):

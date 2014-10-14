@@ -22,13 +22,17 @@
  */
 
 #include <Python.h>
+#include <algorithm>
 #include "mt1939.h"
+#include "tinyscsi.h"
 #include "hexdump.h"
+
 
 typedef struct {
     PyObject_HEAD
     TinySCSI *scsi;
 } Device;
+
 
 static PyObject* device_close(Device *self)
 {
@@ -38,6 +42,7 @@ static PyObject* device_close(Device *self)
     }
     Py_RETURN_NONE;
 }
+
 
 static int device_init(Device *self, PyObject *args, PyObject *kw)
 {
@@ -61,11 +66,13 @@ static int device_init(Device *self, PyObject *args, PyObject *kw)
     return 0;
 }
 
+
 static void device_dealloc(Device *self)
 {
     Py_DECREF(device_close(self));
     self->ob_type->tp_free((PyObject *)self);
 }
+
 
 static PyObject* device_get_signature(Device *self)
 {
@@ -88,6 +95,7 @@ static PyObject* device_get_signature(Device *self)
 
     return PyString_FromStringAndSize((const char *) &bdsig.bytes[0], sizeof bdsig.bytes);
 }
+
 
 static PyObject* device_scsi_out(Device *self, PyObject *args)
 {
@@ -121,6 +129,7 @@ static PyObject* device_scsi_out(Device *self, PyObject *args)
     PyBuffer_Release(&data);    
     Py_RETURN_NONE;
 }
+
 
 static PyObject* device_scsi_in(Device *self, PyObject *args)
 {
@@ -158,6 +167,7 @@ static PyObject* device_scsi_in(Device *self, PyObject *args)
     return result;
 }
 
+
 static PyObject* device_peek(Device *self, PyObject *args)
 {
     unsigned address;
@@ -191,6 +201,7 @@ static PyObject* device_peek(Device *self, PyObject *args)
 
     return PyLong_FromUnsignedLong(result[1]);
 }
+
 
 static PyObject* device_poke(Device *self, PyObject *args)
 {
@@ -261,6 +272,7 @@ static PyObject* device_peek_byte(Device *self, PyObject *args)
     return PyLong_FromUnsignedLong(result[1]);
 }
 
+
 static PyObject* device_poke_byte(Device *self, PyObject *args)
 {
     unsigned address, data;
@@ -300,6 +312,39 @@ static PyObject* device_poke_byte(Device *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+
+static PyObject* device_read_block(Device *self, PyObject *args)
+{
+    unsigned address, wordcount;
+
+    if (!PyArg_ParseTuple(args, "II", &address, &wordcount)) {
+        return 0;
+    }
+
+    if (!self->scsi) {
+        PyErr_SetString(PyExc_IOError, "Device closed");
+        return 0;
+    }
+
+    // Buffer is more than enough for what the firmware/hardware seems to handle
+    uint32_t result[0x40];
+    wordcount = std::min<unsigned>(wordcount, sizeof result / 4);
+    uint32_t cdb[3] = { 0x636f6cac, address, wordcount };
+    bool ok;
+
+    Py_BEGIN_ALLOW_THREADS
+    ok = self->scsi->in((uint8_t*) cdb, sizeof cdb, (uint8_t*)result, 4 * wordcount);
+    Py_END_ALLOW_THREADS
+
+    if (!ok) {
+        PyErr_SetString(PyExc_IOError, "Backdoor command failed");
+        return 0;
+    }
+    
+    return PyString_FromStringAndSize((const char *) result, 4 * wordcount);
+}
+
+
 static PyObject* device_blx(Device *self, PyObject *args)
 {
     unsigned address, arg0 = 0;
@@ -328,6 +373,7 @@ static PyObject* device_blx(Device *self, PyObject *args)
     
     return Py_BuildValue("II", result[0], result[1]);
 }
+
 
 static PyMethodDef device_methods[] =
 {
@@ -358,6 +404,10 @@ static PyMethodDef device_methods[] =
     { "poke_byte", (PyCFunction) device_poke_byte, METH_VARARGS,
       "poke_byte(address, word) -> None\n"
     },
+    { "read_block", (PyCFunction) device_read_block, METH_VARARGS,
+      "read_block(address, wordcount) -> string\n"
+      "Seems to work with up to 0x1c words of data.\n"
+    },    
     { "blx", (PyCFunction) device_blx, METH_VARARGS,
       "blx(address, [r0]) -> (r0, r1)\n"
       "Invoke a function with one argument word and two return words."

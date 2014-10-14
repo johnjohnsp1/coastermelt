@@ -13,12 +13,13 @@
 @
 @ Commands:
 @
-@   Default     ac xx                                  --> [string, 12 bytes]
-@   Peek        ac 65 65 6b [address/LE32]             --> [address/LE32] [data/LE32]
-@   Poke        ac 6f 6b 65 [address/LE32] [data/LE32] --> [address/LE32] [data/LE32]
-@   Peek byte   ac 65 65 42 [address/LE32]             --> [address/LE32] [data/LE32]
-@   Poke byte   ac 6f 6b 42 [address/LE32] [data/LE32] --> [address/LE32] [data/LE32]
-@   BLX         ac 42 4c 58 [address/LE32] [r0/LE32]   --> [r0/LE32] [r1/LE32]
+@   Default       ac xx                                         --> [string, 12 bytes]
+@   Peek          ac 65 65 6b [address/LE32]                    --> [address/LE32] [data/LE32]
+@   Poke          ac 6f 6b 65 [address/LE32] [data/LE32]        --> [address/LE32] [data/LE32]
+@   Peek byte     ac 65 65 42 [address/LE32]                    --> [address/LE32] [data/LE32]
+@   Poke byte     ac 6f 6b 42 [address/LE32] [data/LE32]        --> [address/LE32] [data/LE32]
+@   BLX           ac 42 4c 58 [address/LE32] [r0/LE32]          --> [r0/LE32] [r1/LE32]
+@   Read block    ac 6c 6f 63 [address/LE32] [wordcount/LE32]   --> [data/LE32] * wordcount
 @
 @ Copyright (c) 2014 Micah Elizabeth Scott
 @ 
@@ -85,6 +86,10 @@ _start:
     cmp     r0, r2  
     beq.n   cmd_blx
 
+    ldr     r2, =0x636f6cac     @ Read block
+    cmp     r0, r2
+    beq.n   cmd_read_block
+
     ldr     r2, =0x426565ac     @ Peek byte
     cmp     r0, r2
     beq.n   cmd_peek_byte
@@ -141,6 +146,41 @@ cmd_blx:
     mov     r0, r1
     bl      fifo_write32
     b.n     complete        
+
+
+    @ ReadBlock(address, wordcount) -> (words)
+
+    @ This is redundant with Peek, but the patch is more complicated and it
+    @ may not always work. So we only use it when speed is important.
+
+    @ This seems to work with up to 0x1D words of data (116 bytes). This seems
+    @ like a limitation related to this particular SCSI command. I suspect
+    @ that there does not exist one fully generic SCSI or USB transport at a
+    @ level we can see it so far. It appears instead that everything is split
+    @ very finely between different hardware components, and there is likely a
+    @ parallel state machine on the 8051 firmware that knows about these same
+    @ size limits in the code we just replaced.
+
+cmd_read_block:
+    push    {r4-r5}                 @ Get some breathing room
+    bl      unaligned_read32        @ Store args in r4=address and r5=wordcount
+    mov     r4, r0
+    bl      unaligned_read32
+    mov     r5, r0
+    b.n     word_test
+
+word_loop:
+    ldr     r0, [r4]
+    bl      fifo_write32
+    subs    r5, #1
+    adds    r4, #4
+
+word_test:
+    cmp     r5, #0
+    bne.n   word_loop
+
+    pop     {r4-r5}
+    b.n     complete
 
 
     @ PeekByte(address) -> (address, data)
@@ -207,4 +247,4 @@ fifo_write32:
     .align 4
 signature:
     .ascii "~MeS`14 "
-    .ascii "v.01    "
+    .ascii "v.02    "
