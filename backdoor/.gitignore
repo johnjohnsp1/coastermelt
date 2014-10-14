@@ -1,4 +1,5 @@
 *.log
-*.bin
+firmware-with-backdoor.bin
+SE-506CB_TS01.bin
 patch.s
 

@@ -21,8 +21,10 @@ all: $(BACKDOOR_BIN)
 
 # Disassemble a chunk of code around the patched location in the firmware
 disassemble: $(BACKDOOR_BIN) $(PATCH_BIN)
-	$(OBJDUMP_ARM) -D -b binary -m arm7tdmi -M force-thumb --start-address=$(PATCH_ADDR) $(BACKDOOR_BIN) | head -n 200
-	$(HEXDUMP_TOOL) $(PATCH_BIN)
+	( \
+	  $(HEXDUMP_TOOL) $(PATCH_BIN) ;\
+	  $(OBJDUMP_ARM) -D -b binary -m arm7tdmi -M force-thumb --start-address=$(PATCH_ADDR) $(BACKDOOR_BIN) | head -n 200 \
+	) | less
 
 # Flash the patched firmware! I hope you know what you're doing! The flasher
 # tool knows about our backdoor's signature, so it will let you verify that
@@ -37,7 +39,7 @@ $(FIRMWARE_EXE): $(FIRMWARE_SUMS)
 
 # The EXE is a self-extracting ZIP actually. Grab the .BIN file and check its shasum
 $(FIRMWARE_BIN): $(FIRMWARE_EXE)
-	unzip -o $(FIRMWARE_EXE) $(FIRMWARE_BIN) || true
+	unzip -o $(FIRMWARE_EXE) $(FIRMWARE_BIN) || touch $(FIRMWARE_BIN)
 	shasum -c $(FIRMWARE_SUM)
 
 # Insert our binary patch at PATCH_ADDR in the binary, and patch the checksum

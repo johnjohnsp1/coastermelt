@@ -73,8 +73,8 @@ _start:
 
     ldr     r2, =0x6b6565ac     @ Peek
     subs    r0, r2
-
-    beq     cmd_peek
+    cmp     r0, #0
+@    b       haxx
 
 @    ldr     r2, =0x656b6fac     @ Poke
 @    subs    r0, r2  
@@ -87,6 +87,8 @@ _start:
     bl      fifo_write32
     ldr     r0, signature+0x4
     bl      fifo_write32
+
+haxx:
     ldr     r0, signature+0x8
     bl      fifo_write32
 
