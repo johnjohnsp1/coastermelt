@@ -106,10 +106,6 @@ int main(int argc, char** argv)
 
     fw.print();
 
-    unsigned delay = 2;
-    fprintf(stderr, "--- WRITING in %d seconds ---\n", delay);
-    sleep(delay);
-
     if (!MT1939::writeFirmware(scsi, &fw)) {
         return 1;
     }
