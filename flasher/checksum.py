@@ -66,7 +66,7 @@ class Firmware:
 
         print '- 16-bit checksum at 1ffffe'
         print '  stored = %04x' % self.checksum_stored()
-        print '  calced = %04x' % self.checksum_calculate()
+        print '  actual = %04x' % self.checksum_calculate()
 
 
 if __name__ == '__main__':
