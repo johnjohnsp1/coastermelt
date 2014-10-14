@@ -1,28 +1,28 @@
-FIRMWARE_EXE := SE-506CB_TS01.exe
-FIRMWARE_BIN := SE-506CB_TS01.bin
-FIRMWARE_URL := "http://www.tsstodd.com/TotalLib/popup/Download.asp?path=fwdownload&lang=eng&fname=SE-506CB_TS01.exe"
-FIRMWARE_SUM := firmware.shasum
+FIRMWARE_NAME := SE-506CB_TS01
+FIRMWARE_URL  := "http://www.tsstodd.com/TotalLib/popup/Download.asp?path=fwdownload&lang=eng&fname=SE-506CB_TS01.exe"
 
 PATCH_ADDR := 0xC9600
-PATCH_BIN := patch.bin
+PATCH_BIN := bin/patch.bin
 PATCH_SRC := patch.s
-BACKDOOR_BIN := firmware-with-backdoor.bin
+
+FIRMWARE_BIN := bin/$(FIRMWARE_NAME).bin
+BACKDOOR_BIN := bin/firmware-with-backdoor.bin
 REMOTE_PYLIB := remote.so
 
 # External tools we need
-GCC_ARM := arm-none-eabi-gcc
-OBJCOPY_ARM := arm-none-eabi-objcopy
-OBJDUMP_ARM := arm-none-eabi-objdump
+GCC_ARM      := arm-none-eabi-gcc
+OBJCOPY_ARM  := arm-none-eabi-objcopy
+OBJDUMP_ARM  := arm-none-eabi-objdump
 HEXDUMP_TOOL := xxd
-UNZIP_TOOL := unzip
-CURL_TOOL := curl
-SHASUM_TOOL := shasum
-PYTHON := python
+UNZIP_TOOL   := unzip
+CURL_TOOL    := curl
+SHASUM_TOOL  := shasum
+PYTHON       := python
 
 # Coastermelt tools
-FLASHER_DIR := ../flasher
+FLASHER_DIR   := ../flasher
 CHECKSUM_TOOL := $(PYTHON) $(FLASHER_DIR)/checksum.py
-FLASHER_TOOL := $(FLASHER_DIR)/mtflash
+FLASHER_TOOL  := $(FLASHER_DIR)/mtflash
 
 
 # Compile the backdoored firmware image, from the official TS01 firmware
@@ -31,7 +31,7 @@ all: $(BACKDOOR_BIN) $(REMOTE_PYLIB)
 # FLASH THE MODIFIED FIRMWARE
 # This is a super crazy thing to do, could brick your device, you've been warned!
 flash: $(FLASHER_TOOL) $(BACKDOOR_BIN)
-	$(FLASHER_TOOL) $(BACKDOOR_BIN)
+	$(FLASHER_TOOL) (BACKDOOR_BIN)
 
 # Disassemble a chunk of code around the patched location in the firmware
 disassemble: $(BACKDOOR_BIN) $(PATCH_BIN)
@@ -50,14 +50,14 @@ $(FLASHER_TOOL):
 	make -C $(FLASHER_DIR)
 
 # Download the original firmware from TSST's web site (slow, only happens once)
-$(FIRMWARE_EXE): $(FIRMWARE_SUMS)
+bin/$(FIRMWARE_NAME).exe: bin/firmware.shasum
 	echo --- Downloading original firmware image
 	$(CURL_TOOL) $(FIRMWARE_URL) > $@
 
 # The EXE is a self-extracting ZIP actually. Grab the .BIN file and check its shasum
-$(FIRMWARE_BIN): $(FIRMWARE_EXE)
-	$(UNZIP_TOOL) -o $(FIRMWARE_EXE) $(FIRMWARE_BIN) || touch $(FIRMWARE_BIN)
-	$(SHASUM_TOOL) -c $(FIRMWARE_SUM)
+$(FIRMWARE_BIN): bin/$(FIRMWARE_NAME).exe
+	cd bin; $(UNZIP_TOOL) -o $(FIRMWARE_NAME).exe $(FIRMWARE_NAME).bin || touch $(FIRMWARE_NAME).bin
+	cd bin; $(SHASUM_TOOL) -c firmware.shasum
 
 # Insert our binary patch at PATCH_ADDR in the binary, and patch the checksum
 $(BACKDOOR_BIN): $(PATCH_BIN) $(FIRMWARE_BIN)
