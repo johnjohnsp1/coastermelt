@@ -28,6 +28,7 @@ int main(int argc, char** argv)
     TinySCSI scsi;
     MT1939::DeviceInfo info; 
     MT1939::FirmwareImage fw;
+    MT1939::BackdoorSignature bdsig;
 
     if (!MT1939::open(scsi)) {
         return 1;
@@ -42,7 +43,10 @@ int main(int argc, char** argv)
     if (argc == 1) {
 
         info.print();
-        MT1939::backdoorInfo(scsi);
+
+        if (MT1939::backdoorSignature(scsi, &bdsig)) {
+            bdsig.print();
+        }
 
     } else if (argc == 2 && !strcmp("--erase", argv[1])) {
 
@@ -91,7 +95,10 @@ int main(int argc, char** argv)
     } else if (argc == 2 && fw.open(argv[1])) {
 
         info.print();
-        MT1939::backdoorInfo(scsi);
+
+        if (MT1939::backdoorSignature(scsi, &bdsig)) {
+            bdsig.print();
+        }
 
         fprintf(stderr, "Firmware image loaded from disk\n");
         fw.print();
@@ -101,7 +108,10 @@ int main(int argc, char** argv)
         }
 
         info.print();
-        MT1939::backdoorInfo(scsi);
+
+        if (MT1939::backdoorSignature(scsi, &bdsig)) {
+            bdsig.print();
+        }
 
     } else {
         fprintf(stderr,

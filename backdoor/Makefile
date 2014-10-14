@@ -7,17 +7,31 @@ PATCH_ADDR := 0xC9600
 PATCH_BIN := patch.bin
 PATCH_SRC := patch.s
 BACKDOOR_BIN := firmware-with-backdoor.bin
+REMOTE_PYLIB := remote.so
 
-CHECKSUM_TOOL := python ../flasher/checksum.py
-FLASHER_TOOL := ../flasher/mtflash
+# External tools we need
 GCC_ARM := arm-none-eabi-gcc
 OBJCOPY_ARM := arm-none-eabi-objcopy
 OBJDUMP_ARM := arm-none-eabi-objdump
 HEXDUMP_TOOL := xxd
+UNZIP_TOOL := unzip
+CURL_TOOL := curl
+SHASUM_TOOL := shasum
+PYTHON := python
+
+# Coastermelt tools
+FLASHER_DIR := ../flasher
+CHECKSUM_TOOL := $(PYTHON) $(FLASHER_DIR)/checksum.py
+FLASHER_TOOL := $(FLASHER_DIR)/mtflash
 
 
 # Compile the backdoored firmware image, from the official TS01 firmware
-all: $(BACKDOOR_BIN)
+all: $(BACKDOOR_BIN) $(REMOTE_PYLIB)
+
+# FLASH THE MODIFIED FIRMWARE
+# This is a super crazy thing to do, could brick your device, you've been warned!
+flash: $(FLASHER_TOOL) $(BACKDOOR_BIN)
+	$(FLASHER_TOOL) $(BACKDOOR_BIN)
 
 # Disassemble a chunk of code around the patched location in the firmware
 disassemble: $(BACKDOOR_BIN) $(PATCH_BIN)
@@ -26,21 +40,24 @@ disassemble: $(BACKDOOR_BIN) $(PATCH_BIN)
 	  $(OBJDUMP_ARM) -D -b binary -m arm7tdmi -M force-thumb --start-address=$(PATCH_ADDR) $(BACKDOOR_BIN) | head -n 200 \
 	) | less
 
-# Flash the patched firmware! I hope you know what you're doing! The flasher
-# tool knows about our backdoor's signature, so it will let you verify that
-# the patch is working properly after it restarts.
-flash: $(BACKDOOR_BIN)
-	$(FLASHER_TOOL) $(BACKDOOR_BIN)
+
+# Build the "remote" python module with distutils
+$(REMOTE_PYLIB): remote.cpp
+	$(PYTHON) setup.py build_ext --inplace
+
+# We can compile the flasher if necessary
+$(FLASHER_TOOL):
+	make -C $(FLASHER_DIR)
 
 # Download the original firmware from TSST's web site (slow, only happens once)
 $(FIRMWARE_EXE): $(FIRMWARE_SUMS)
 	echo --- Downloading original firmware image
-	curl $(FIRMWARE_URL) > $@
+	$(CURL_TOOL) $(FIRMWARE_URL) > $@
 
 # The EXE is a self-extracting ZIP actually. Grab the .BIN file and check its shasum
 $(FIRMWARE_BIN): $(FIRMWARE_EXE)
-	unzip -o $(FIRMWARE_EXE) $(FIRMWARE_BIN) || touch $(FIRMWARE_BIN)
-	shasum -c $(FIRMWARE_SUM)
+	$(UNZIP_TOOL) -o $(FIRMWARE_EXE) $(FIRMWARE_BIN) || touch $(FIRMWARE_BIN)
+	$(SHASUM_TOOL) -c $(FIRMWARE_SUM)
 
 # Insert our binary patch at PATCH_ADDR in the binary, and patch the checksum
 $(BACKDOOR_BIN): $(PATCH_BIN) $(FIRMWARE_BIN)
@@ -55,7 +72,8 @@ $(PATCH_BIN): $(PATCH_SRC)
 
 
 clean:
-	rm -f $(FIRMWARE_BIN) $(PATCH_BIN) $(BACKDOOR_BIN)
+	rm -f $(FIRMWARE_BIN) $(BACKDOOR_BIN) $(REMOTE_PYLIB)
+	$(PYTHON) setup.py clean
 
-.PHONY: clean all flash test disassemble
+.PHONY: clean all flash test disassemble pyscsi
 .DELETE_ON_ERROR:

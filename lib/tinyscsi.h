@@ -153,7 +153,6 @@ inline bool TinySCSI::open(uint16_t idVendor, uint16_t idProduct)
     // We only use one active task at a time
     mTask = (*mInterface)->CreateSCSITask(mInterface);
 
-    fprintf(stderr, "[SCSI] Device opened\n");
     return true;
 }
 
@@ -163,19 +162,19 @@ inline bool TinySCSI::reEnumerate()
 
     kr = (*mUSB)->USBDeviceOpen(mUSB);
     if (kr) {
-        fprintf(stderr, "[SCSI] Failed to open USB device (%08x)\n", kr);
+        fprintf(stderr, "[SCSI] Failed to open USB device (%08x)\n", (int)kr);
         return false;
     }
 
     kr = (*mUSB)->ResetDevice(mUSB);
     if (kr) {
-        fprintf(stderr, "[SCSI] Failed to reset USB device (%08x)\n", kr);
+        fprintf(stderr, "[SCSI] Failed to reset USB device (%08x)\n", (int)kr);
         return false;
     }
 
     kr = (*mUSB)->USBDeviceReEnumerate(mUSB, 0);
     if (kr) {
-        fprintf(stderr, "[SCSI] Failed to re-enumerate USB device (%08x)\n", kr);
+        fprintf(stderr, "[SCSI] Failed to re-enumerate USB device (%08x)\n", (int)kr);
         return false;
     }
 

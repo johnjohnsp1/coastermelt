@@ -38,6 +38,12 @@ public:
         uint8_t unknown[0x60];
     };
 
+    struct BackdoorSignature {
+        uint8_t bytes[12];
+
+        void print();
+    };
+
     struct DeviceInfo {
         ExtendedInquiryData inquiry;
         FirmwareVersionInfo firmware;
@@ -66,7 +72,7 @@ public:
 
     // Higher level operations
     static bool deviceInfo(TinySCSI &scsi, DeviceInfo* data);
-    static bool backdoorInfo(TinySCSI &scsi);
+    static bool backdoorSignature(TinySCSI &scsi, BackdoorSignature* data);
     static bool writeFirmware(TinySCSI &scsi, FirmwareImage* data);
     static bool reset(TinySCSI &scsi);
 };
@@ -163,22 +169,15 @@ inline bool MT1939::reset(TinySCSI &scsi)
     return false;
 }
 
-inline bool MT1939::backdoorInfo(TinySCSI &scsi)
+inline bool MT1939::backdoorSignature(TinySCSI &scsi, BackdoorSignature* data)
 {
     // If we've installed a patched firmware, command 0xAC will return a signature.
     // NOTE that if our backdoor patch is crashing, this could crash. It needs
     // to be possible to bypass this step. We can do that by going back to the
     // bootloader with the --erase command line option.
 
-    uint8_t sig[12];
     uint8_t cdb[12] = {0xac, 0};
-
-    fprintf(stderr, "Backdoor signature:\n");
-    if (scsi.in(cdb, sizeof cdb, sig, sizeof sig)) {
-        hexdump(sig, sizeof sig);
-    }
-
-    return true;
+    return scsi.in(cdb, sizeof cdb, &data->bytes[0], sizeof data->bytes);
 }
 
 inline bool MT1939::FirmwareImage::open(const char *filename)
@@ -222,4 +221,10 @@ inline void MT1939::DeviceInfo::print()
 
     fprintf(stderr, "Firmware version:\n");
     hexdump(firmware.unknown, sizeof firmware.unknown);
+}
+
+inline void MT1939::BackdoorSignature::print()
+{
+    fprintf(stderr, "Backdoor signature:\n");
+    hexdump(bytes, sizeof bytes);
 }
